@@ -32,14 +32,65 @@ import { motion, AnimatePresence } from 'motion/react';
 
 // --- Components ---
 
-const IconButton = ({ icon: Icon, label }: { icon: any, label: string }) => (
-  <div className="flex flex-col items-center gap-2 min-w-[80px]">
-    <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center hover:opacity-80 transition-all cursor-pointer">
+const IconButton = ({ icon: Icon, label, onClick }: { icon: any, label: string, onClick?: () => void }) => (
+  <motion.div 
+    whileTap={{ scale: 0.9 }}
+    onClick={onClick}
+    className="flex flex-col items-center gap-2 min-w-[80px] cursor-pointer group"
+  >
+    <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center group-hover:bg-nu-gray/80 transition-all">
       <Icon size={24} className="text-nu-text" />
     </div>
     <span className="text-xs font-semibold text-center text-nu-text">{label}</span>
-  </div>
+  </motion.div>
 );
+
+const Button = ({ 
+  children, 
+  onClick, 
+  className = "", 
+  variant = 'primary',
+  size = 'md',
+  fullWidth = true,
+  disabled = false,
+  type = "button"
+}: { 
+  children: React.ReactNode, 
+  onClick?: () => void, 
+  className?: string,
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'white',
+  size?: 'sm' | 'md' | 'lg',
+  fullWidth?: boolean,
+  disabled?: boolean,
+  type?: "button" | "submit" | "reset"
+}) => {
+  const variants = {
+    primary: "bg-nu-purple text-white",
+    secondary: "bg-nu-gray text-nu-text",
+    outline: "border-2 border-nu-purple text-nu-purple bg-transparent",
+    ghost: "text-nu-purple bg-transparent",
+    white: "bg-white text-nu-purple"
+  };
+
+  const sizes = {
+    sm: "py-2 px-4 text-xs",
+    md: "py-4 px-6 text-lg",
+    lg: "py-5 px-8 text-xl"
+  };
+
+  return (
+    <motion.button
+      type={type}
+      disabled={disabled}
+      whileTap={{ scale: 0.97 }}
+      whileHover={disabled ? {} : { scale: 1.01 }}
+      onClick={onClick}
+      className={`${fullWidth ? 'w-full' : 'w-auto'} rounded-full font-bold shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed ${variants[variant]} ${sizes[size]} ${className}`}
+    >
+      {children}
+    </motion.button>
+  );
+};
 
 const Card = ({ children, className = "", onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
   <div 
@@ -83,9 +134,14 @@ export default function App() {
   // Pix Flow State
   const [pixValue, setPixValue] = useState("");
   const [pixRecipient, setPixRecipient] = useState("");
-  const [lastTransaction, setLastTransaction] = useState<{ value: number, recipient: string, date: string } | null>(null);
-  const [transactions, setTransactions] = useState<{ value: number, recipient: string, date: string }[]>([]);
-  const [selectedTransaction, setSelectedTransaction] = useState<{ value: number, recipient: string, date: string } | null>(null);
+  const [pixRecipientCpf, setPixRecipientCpf] = useState("");
+  const [pixRecipientKey, setPixRecipientKey] = useState("");
+  const [pixRecipientInstitution, setPixRecipientInstitution] = useState("PICPAY");
+  const [pixRecipientAccountType, setPixRecipientAccountType] = useState("Conta de pagamentos");
+  
+  const [lastTransaction, setLastTransaction] = useState<any | null>(null);
+  const [transactions, setTransactions] = useState<any[]>([]);
+  const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
 
   // Loan State
   const [activeLoans, setActiveLoans] = useState<{ amount: number, installments: number, total: number, rate: number, date: string }[]>([]);
@@ -136,10 +192,21 @@ export default function App() {
     const val = parseFloat(pixValue.replace(',', '.'));
     if (!isNaN(val) && val > 0 && val <= balance && pixRecipient.trim()) {
       setBalance(prev => prev - val);
+      const transactionId = 'E' + Math.random().toString(36).substring(2, 15).toUpperCase() + Math.random().toString(36).substring(2, 15).toLowerCase();
       const transaction = {
+        id: transactionId,
         value: val,
         recipient: pixRecipient,
-        date: new Date().toLocaleString('pt-BR')
+        recipientCpf: pixRecipientCpf || '***.' + Math.floor(Math.random() * 900 + 100) + '.' + Math.floor(Math.random() * 900 + 100) + '-**',
+        recipientKey: pixRecipientKey || Math.random().toString(36).substring(2, 10) + '-' + Math.random().toString(36).substring(2, 5) + '-' + Math.random().toString(36).substring(2, 5) + '-' + Math.random().toString(36).substring(2, 5) + '-' + Math.random().toString(36).substring(2, 15),
+        recipientInstitution: pixRecipientInstitution,
+        recipientAccountType: pixRecipientAccountType,
+        originName: userName,
+        originCpf: '***.022.373-**',
+        originAccount: '60359614-1',
+        originAgency: '0001',
+        originInstitution: 'NU PAGAMENTOS - IP',
+        date: new Date().toLocaleString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).toUpperCase()
       };
       setLastTransaction(transaction);
       setTransactions(prev => [transaction, ...prev]);
@@ -207,19 +274,30 @@ export default function App() {
             />
           </div>
 
-          <button 
+          <Button 
             type="submit"
-            className="w-full bg-white text-nu-purple py-4 rounded-full font-bold text-lg shadow-xl active:scale-95 transition-transform mt-8"
+            variant="white"
+            className="mt-8"
           >
             Continuar
-          </button>
+          </Button>
         </form>
 
         <div className="mt-8 space-y-4 text-center">
-          <button className="text-sm font-bold text-white/80 hover:text-white transition-colors">Esqueci minha senha</button>
+          <motion.button 
+            whileTap={{ scale: 0.95 }}
+            className="text-sm font-bold text-white/80 hover:text-white transition-colors"
+          >
+            Esqueci minha senha
+          </motion.button>
           <div className="pt-4">
             <p className="text-xs text-white/60">Ainda não tem conta?</p>
-            <button className="text-sm font-bold text-white mt-1">Criar conta</button>
+            <motion.button 
+              whileTap={{ scale: 0.95 }}
+              className="text-sm font-bold text-white mt-1"
+            >
+              Criar conta
+            </motion.button>
           </div>
         </div>
       </div>
@@ -245,12 +323,13 @@ export default function App() {
           >
             <div className="p-6 border-b border-nu-gray flex justify-between items-center">
               <h3 className="text-xl font-bold">Configurações</h3>
-              <button 
+              <motion.button 
+                whileTap={{ scale: 0.9 }}
                 onClick={() => setIsSettingsOpen(false)}
                 className="p-2 hover:bg-nu-gray rounded-full transition-colors"
               >
                 <X size={24} />
-              </button>
+              </motion.button>
             </div>
             
             <div className="p-6 space-y-2">
@@ -329,9 +408,13 @@ export default function App() {
             <User size={24} className="text-white" />
           </div>
           <div className="flex gap-4">
-            <button onClick={() => setShowBalance(!showBalance)} className="text-white">
+            <motion.button 
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setShowBalance(!showBalance)} 
+              className="text-white"
+            >
               {showBalance ? <Eye size={24} /> : <EyeOff size={24} />}
-            </button>
+            </motion.button>
             <HelpCircle size={24} className="text-white cursor-pointer" />
             <Settings 
               size={24} 
@@ -410,14 +493,12 @@ export default function App() {
 
         {/* Quick Actions */}
         <div className="flex overflow-x-auto gap-4 p-6 no-scrollbar">
-          <div onClick={() => setActiveScreen('pix-area')}>
-            <IconButton icon={QrCode} label="Área Pix" />
-          </div>
+          <IconButton icon={QrCode} label="Área Pix" onClick={() => setActiveScreen('pix-area')} />
           <IconButton icon={BarcodeIcon} label="Pagar" />
           <IconButton icon={Receipt} label="Pagar Contas" />
-          <IconButton icon={ArrowDownCircle} label="Pegar emprestado" />
-          <IconButton icon={ArrowUpCircle} label="Transferir" />
-          <IconButton icon={PlusCircle} label="Recarga de celular" />
+          <IconButton icon={ArrowDownCircle} label="Empréstimo" onClick={() => setActiveScreen('loan-home')} />
+          <IconButton icon={ArrowUpCircle} label="Transferir" onClick={() => setActiveScreen('make-pix')} />
+          <IconButton icon={PlusCircle} label="Recarga" />
           <IconButton icon={DollarSign} label="Depositar" />
           <IconButton icon={TrendingUp} label="Investir" />
         </div>
@@ -583,7 +664,7 @@ export default function App() {
               <div className="p-4">
                 <h3 className="font-bold text-sm mb-1 text-nu-text">Nu Reserva Imediata</h3>
                 <p className="text-xs text-nu-text-muted mb-3">O fundo de renda fixa para sua reserva de emergência.</p>
-                <button className="bg-nu-purple text-white px-4 py-2 rounded-full text-xs font-bold">Conhecer</button>
+                <Button size="sm" fullWidth={false}>Conhecer</Button>
               </div>
             </div>
             <div className="min-w-[240px] bg-nu-gray rounded-2xl overflow-hidden cursor-pointer">
@@ -591,7 +672,7 @@ export default function App() {
               <div className="p-4">
                 <h3 className="font-bold text-sm mb-1 text-nu-text">Indique seus amigos</h3>
                 <p className="text-xs text-nu-text-muted mb-3">Espalhe a liberdade financeira para quem você gosta.</p>
-                <button className="bg-nu-purple text-white px-4 py-2 rounded-full text-xs font-bold">Indicar</button>
+                <Button size="sm" fullWidth={false}>Indicar</Button>
               </div>
             </div>
           </div>
@@ -603,9 +684,13 @@ export default function App() {
   const renderPixArea = () => (
     <div className="bg-white dark:bg-[#000000] min-h-screen transition-colors duration-300">
       <header className="p-6 flex items-center justify-between">
-        <button onClick={() => setActiveScreen('home')} className="text-nu-text">
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setActiveScreen('home')} 
+          className="text-nu-text"
+        >
           <ChevronRight size={24} className="rotate-180" />
-        </button>
+        </motion.button>
         <HelpCircle size={24} className="text-nu-text-muted" />
       </header>
       <div className="px-6 pb-6">
@@ -656,9 +741,13 @@ export default function App() {
   const renderMakePix = () => (
     <div className="bg-white dark:bg-[#000000] min-h-screen p-6 transition-colors duration-300">
       <header className="flex items-center mb-8">
-        <button onClick={() => setActiveScreen('pix-area')} className="text-nu-text">
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setActiveScreen('pix-area')} 
+          className="text-nu-text"
+        >
           <ChevronRight size={24} className="rotate-180" />
-        </button>
+        </motion.button>
       </header>
       <h1 className="text-2xl font-bold mb-8 text-nu-text">Qual é o valor da transferência?</h1>
       <div className="mb-8">
@@ -675,68 +764,173 @@ export default function App() {
         </div>
         <p className="mt-4 text-nu-text-muted">Saldo disponível: <span className="text-nu-text font-bold">{formatCurrency(balance)}</span></p>
       </div>
-      <div className="mb-12">
-        <label className="block text-sm font-bold mb-2 text-nu-text">Para quem você quer transferir?</label>
-        <input 
-          type="text"
-          placeholder="Nome ou CPF/CNPJ"
-          value={pixRecipient}
-          onChange={(e) => setPixRecipient(e.target.value)}
-          className="w-full p-4 bg-nu-gray rounded-xl outline-none font-bold text-nu-text"
-        />
+      <div className="space-y-4 mb-8">
+        <div>
+          <label className="block text-sm font-bold mb-2 text-nu-text">Nome do destinatário</label>
+          <input 
+            type="text"
+            placeholder="Ex: Maria da Conceição"
+            value={pixRecipient}
+            onChange={(e) => setPixRecipient(e.target.value)}
+            className="w-full p-4 bg-nu-gray rounded-xl outline-none font-bold text-nu-text"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold mb-2 text-nu-text">CPF do destinatário</label>
+          <input 
+            type="text"
+            placeholder="000.000.000-00"
+            value={pixRecipientCpf}
+            onChange={(e) => setPixRecipientCpf(e.target.value)}
+            className="w-full p-4 bg-nu-gray rounded-xl outline-none font-bold text-nu-text"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold mb-2 text-nu-text">Chave Pix</label>
+          <input 
+            type="text"
+            placeholder="E-mail, CPF, Celular ou Aleatória"
+            value={pixRecipientKey}
+            onChange={(e) => setPixRecipientKey(e.target.value)}
+            className="w-full p-4 bg-nu-gray rounded-xl outline-none font-bold text-nu-text"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold mb-2 text-nu-text">Instituição</label>
+          <input 
+            type="text"
+            placeholder="Ex: PICPAY"
+            value={pixRecipientInstitution}
+            onChange={(e) => setPixRecipientInstitution(e.target.value)}
+            className="w-full p-4 bg-nu-gray rounded-xl outline-none font-bold text-nu-text"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-bold mb-2 text-nu-text">Tipo de conta</label>
+          <select 
+            value={pixRecipientAccountType}
+            onChange={(e) => setPixRecipientAccountType(e.target.value)}
+            className="w-full p-4 bg-nu-gray rounded-xl outline-none font-bold text-nu-text appearance-none"
+          >
+            <option value="Conta de pagamentos">Conta de pagamentos</option>
+            <option value="Conta corrente">Conta corrente</option>
+            <option value="Conta poupança">Conta poupança</option>
+          </select>
+        </div>
       </div>
-      <button 
+      <Button 
         onClick={handleConfirmPix}
-        className="w-full bg-nu-purple text-white py-4 rounded-full font-bold text-lg shadow-lg active:scale-95 transition-transform"
+        className="mt-4"
       >
         Transferir
-      </button>
+      </Button>
     </div>
   );
 
   const renderReceipt = () => (
-    <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col transition-colors duration-300">
-      <header className="p-6">
-        <button onClick={() => setActiveScreen('home')} className="text-nu-text">
+    <div className="bg-white min-h-screen flex flex-col transition-colors duration-300 text-black font-sans">
+      <header className="p-6 flex justify-between items-center bg-white sticky top-0 z-10">
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setActiveScreen('home')} 
+          className="text-black"
+        >
           <ChevronRight size={24} className="rotate-180" />
-        </button>
-      </header>
-      <div className="flex-1 px-6 flex flex-col items-center justify-center text-center">
-        <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-6">
-          <ShieldCheck size={40} className="text-green-600 dark:text-green-400" />
+        </motion.button>
+        <div className="flex items-center gap-1">
+          <span className="font-bold text-xl tracking-tighter">nu</span>
+          <span className="text-[10px] font-medium text-gray-400 mt-1">Nubank</span>
         </div>
-        <h1 className="text-2xl font-bold mb-2 text-nu-text">Transferência realizada!</h1>
-        <p className="text-nu-text-muted mb-8">Seu Pix foi enviado com sucesso.</p>
-        
-        <div className="w-full bg-nu-gray rounded-2xl p-6 text-left space-y-4">
-          <div className="flex justify-between">
-            <span className="text-nu-text-muted text-sm">Valor</span>
-            <span className="font-bold text-nu-text">{formatCurrency(lastTransaction?.value || 0)}</span>
+      </header>
+
+      <div className="flex-1 px-8 py-4 overflow-y-auto">
+        <h1 className="text-2xl font-bold mb-1 tracking-tight">Comprovante de transferência</h1>
+        <p className="text-gray-500 text-[11px] font-medium mb-10">{lastTransaction?.date}</p>
+
+        <div className="grid grid-cols-2 gap-y-10 mb-10">
+          <div>
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Valor</p>
+            <p className="text-xl font-bold">{formatCurrency(lastTransaction?.value || 0)}</p>
           </div>
-          <div className="flex justify-between">
-            <span className="text-nu-text-muted text-sm">Para</span>
-            <span className="font-bold text-nu-text">{lastTransaction?.recipient}</span>
+          <div>
+            <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Tipo de transferência</p>
+            <p className="text-xl font-bold">Pix</p>
           </div>
-          <div className="flex justify-between">
-            <span className="text-nu-text-muted text-sm">Data</span>
-            <span className="font-bold text-sm text-nu-text">{lastTransaction?.date}</span>
+        </div>
+
+        <div className="border-t border-gray-100 pt-8 mb-8">
+          <h2 className="font-bold text-sm mb-8">Destino</h2>
+          <div className="grid grid-cols-2 gap-y-8">
+            <div className="col-span-1">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Nome</p>
+              <p className="text-[11px] font-bold uppercase leading-tight pr-2">{lastTransaction?.recipient}</p>
+            </div>
+            <div className="col-span-1">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Tipo de conta</p>
+              <p className="text-[11px] font-medium">{lastTransaction?.recipientAccountType}</p>
+            </div>
+            <div className="col-span-1">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">CPF</p>
+              <p className="text-[11px] font-medium">{lastTransaction?.recipientCpf}</p>
+            </div>
+            <div className="col-span-1">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Chave Pix</p>
+              <p className="text-[11px] font-medium break-all leading-tight">{lastTransaction?.recipientKey}</p>
+            </div>
+            <div className="col-span-2">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Instituição</p>
+              <p className="text-[11px] font-medium uppercase">{lastTransaction?.recipientInstitution}</p>
+            </div>
           </div>
-          <div className="flex justify-between">
-            <span className="text-nu-text-muted text-sm">Tipo</span>
-            <span className="font-bold text-nu-text">Pix</span>
+        </div>
+
+        <div className="border-t border-gray-100 pt-8 mb-10">
+          <h2 className="font-bold text-sm mb-8">Origem</h2>
+          <div className="grid grid-cols-2 gap-y-8">
+            <div className="col-span-1">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Nome</p>
+              <p className="text-[11px] font-medium">{lastTransaction?.originName}</p>
+            </div>
+            <div className="col-span-1">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Conta</p>
+              <p className="text-[11px] font-medium">{lastTransaction?.originAccount}</p>
+            </div>
+            <div className="col-span-1">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Instituição</p>
+              <p className="text-[11px] font-medium uppercase">{lastTransaction?.originInstitution}</p>
+            </div>
+            <div className="col-span-1">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">CPF</p>
+              <p className="text-[11px] font-medium">{lastTransaction?.originCpf}</p>
+            </div>
+            <div className="col-span-1">
+              <p className="text-gray-400 text-[10px] font-bold uppercase tracking-wider mb-1">Agência</p>
+              <p className="text-[11px] font-medium">{lastTransaction?.originAgency}</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-4 text-[10px] text-gray-900 font-bold border-t border-gray-100 pt-8">
+          <p>Nu Pagamentos S.A. - Instituição de Pagamento</p>
+          <p>CNPJ 18.236.120/0001-58</p>
+          <p>ID da transação: <span className="font-medium">{lastTransaction?.id}</span></p>
+          <div className="pt-6 space-y-1 text-gray-500 font-medium leading-relaxed">
+            <p>Estamos aqui para ajudar se você tiver alguma dúvida</p>
+            <p>Ouvidoria: 0800 887 0463, atendimento em dias úteis, das 09h às 18h (horário de São Paulo).</p>
           </div>
         </div>
       </div>
-      <div className="p-6 space-y-4">
-        <button className="w-full border-2 border-nu-purple text-nu-purple py-4 rounded-full font-bold hover:bg-nu-purple/5 transition-colors">
+
+      <div className="p-6 space-y-4 bg-white border-t border-gray-50">
+        <Button variant="outline" className="border-nu-purple text-nu-purple">
           Enviar comprovante
-        </button>
-        <button 
+        </Button>
+        <Button 
           onClick={() => setActiveScreen('home')}
-          className="w-full bg-nu-purple text-white py-4 rounded-full font-bold shadow-lg"
+          className="bg-nu-purple text-white"
         >
           Voltar ao início
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -744,9 +938,13 @@ export default function App() {
   const renderLoanHome = () => (
     <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col transition-colors duration-300">
       <header className="p-6 flex items-center justify-between">
-        <button onClick={() => setActiveScreen('home')} className="text-nu-text">
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setActiveScreen('home')} 
+          className="text-nu-text"
+        >
           <ChevronRight size={24} className="rotate-180" />
-        </button>
+        </motion.button>
         <HelpCircle size={24} className="text-nu-text-muted" />
       </header>
       <div className="px-6 flex-1">
@@ -771,12 +969,13 @@ export default function App() {
                 </div>
               </div>
             ))}
-            <button 
+            <Button 
               onClick={() => setActiveScreen('loan-simulate')}
-              className="w-full border-2 border-nu-purple text-nu-purple py-4 rounded-full font-bold mt-4 hover:bg-nu-purple/5 transition-colors"
+              variant="outline"
+              className="mt-4"
             >
               Novo empréstimo
-            </button>
+            </Button>
           </div>
         ) : (
           <div className="mt-12 flex flex-col items-center text-center">
@@ -786,12 +985,11 @@ export default function App() {
             <p className="text-nu-text-muted mb-8">
               Você tem até <span className="font-bold text-nu-text">R$ 15.000,00</span> disponíveis para contratar agora.
             </p>
-            <button 
+            <Button 
               onClick={() => setActiveScreen('loan-simulate')}
-              className="w-full bg-nu-purple text-white py-4 rounded-full font-bold text-lg shadow-lg"
             >
               Simular empréstimo
-            </button>
+            </Button>
           </div>
         )}
       </div>
@@ -806,9 +1004,13 @@ export default function App() {
     return (
       <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col p-6 transition-colors duration-300">
         <header className="mb-8">
-          <button onClick={() => setActiveScreen('loan-home')} className="text-nu-text">
+          <motion.button 
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setActiveScreen('loan-home')} 
+            className="text-nu-text"
+          >
             <ChevronRight size={24} className="rotate-180" />
-          </button>
+          </motion.button>
         </header>
         
         <h1 className="text-2xl font-bold mb-8 text-nu-text">Quanto você precisa?</h1>
@@ -830,13 +1032,14 @@ export default function App() {
         <h2 className="text-lg font-bold mb-4 text-nu-text">Em quantas parcelas?</h2>
         <div className="grid grid-cols-3 gap-3 mb-12">
           {installmentsOptions.map(opt => (
-            <button 
+            <motion.button 
               key={opt}
+              whileTap={{ scale: 0.95 }}
               onClick={() => setLoanSimulation({ ...loanSimulation, installments: opt })}
               className={`py-3 rounded-xl font-bold transition-all ${loanSimulation.installments === opt ? 'bg-nu-purple text-white' : 'bg-nu-gray text-nu-text'}`}
             >
               {opt}x
-            </button>
+            </motion.button>
           ))}
         </div>
 
@@ -855,13 +1058,12 @@ export default function App() {
           </div>
         </div>
 
-        <button 
+        <Button 
           disabled={loanSimulation.amount < 500 || loanSimulation.amount > 15000}
           onClick={() => setActiveScreen('loan-confirm')}
-          className="w-full bg-nu-purple text-white py-4 rounded-full font-bold text-lg shadow-lg disabled:opacity-50"
         >
           Continuar
-        </button>
+        </Button>
       </div>
     );
   };
@@ -886,9 +1088,13 @@ export default function App() {
     return (
       <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col p-6 transition-colors duration-300">
         <header className="mb-8">
-          <button onClick={() => setActiveScreen('loan-simulate')} className="text-nu-text">
+          <motion.button 
+            whileTap={{ scale: 0.9 }}
+            onClick={() => setActiveScreen('loan-simulate')} 
+            className="text-nu-text"
+          >
             <ChevronRight size={24} className="rotate-180" />
-          </button>
+          </motion.button>
         </header>
         
         <h1 className="text-2xl font-bold mb-4 text-nu-purple">Revise os termos</h1>
@@ -924,12 +1130,11 @@ export default function App() {
           <p className="text-[10px] text-nu-text-muted text-center px-4">
             Ao clicar em "Confirmar contratação", você concorda com os termos do contrato de empréstimo pessoal e autoriza o débito das parcelas em sua conta.
           </p>
-          <button 
+          <Button 
             onClick={handleContractLoan}
-            className="w-full bg-nu-purple text-white py-4 rounded-full font-bold text-lg shadow-lg"
           >
             Confirmar contratação
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -950,12 +1155,12 @@ export default function App() {
           O valor de <span className="font-bold text-white">{formatCurrency(loanSimulation.amount)}</span> já está disponível para você usar.
         </p>
       </div>
-      <button 
+      <Button 
         onClick={() => setActiveScreen('home')}
-        className="w-full bg-white text-nu-purple py-4 rounded-full font-bold text-lg shadow-xl"
+        variant="white"
       >
         Ir para o início
-      </button>
+      </Button>
     </div>
   );
 
@@ -1005,12 +1210,13 @@ export default function App() {
             >
               <div className="p-6 border-b border-nu-gray flex justify-between items-center">
                 <h3 className="text-xl font-bold text-nu-text">Detalhes da transação</h3>
-                <button 
+                <motion.button 
+                  whileTap={{ scale: 0.9 }}
                   onClick={() => setSelectedTransaction(null)}
                   className="p-2 hover:bg-nu-gray rounded-full transition-colors text-nu-text"
                 >
                   <X size={24} />
-                </button>
+                </motion.button>
               </div>
               <div className="p-8 space-y-8">
                 <div className="flex flex-col items-center text-center">
@@ -1029,29 +1235,33 @@ export default function App() {
                     <span className="font-bold text-right max-w-[200px]">{selectedTransaction.recipient}</span>
                   </div>
                   <div className="flex justify-between">
+                    <span className="text-nu-text-muted text-sm">CPF</span>
+                    <span className="font-bold">{selectedTransaction.recipientCpf || '***.***.***-**'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-nu-text-muted text-sm">Instituição</span>
+                    <span className="font-bold">{selectedTransaction.recipientInstitution || 'Nu Pagamentos S.A.'}</span>
+                  </div>
+                  <div className="flex justify-between">
                     <span className="text-nu-text-muted text-sm">Data e hora</span>
                     <span className="font-bold">{selectedTransaction.date}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-nu-text-muted text-sm">Tipo de transação</span>
-                    <span className="font-bold">Pix</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-nu-text-muted text-sm">Instituição</span>
-                    <span className="font-bold">Nu Pagamentos S.A.</span>
+                    <span className="text-nu-text-muted text-sm">ID da transação</span>
+                    <span className="font-bold text-xs break-all text-right ml-4">{selectedTransaction.id || 'N/A'}</span>
                   </div>
                 </div>
 
                 <div className="pt-4 space-y-3">
-                  <button className="w-full bg-nu-purple text-white py-4 rounded-full font-bold shadow-lg active:scale-95 transition-transform">
+                  <Button>
                     Enviar comprovante
-                  </button>
-                  <button 
+                  </Button>
+                  <Button 
                     onClick={() => setSelectedTransaction(null)}
-                    className="w-full py-4 rounded-full font-bold text-nu-purple"
+                    variant="ghost"
                   >
                     Fechar
-                  </button>
+                  </Button>
                 </div>
               </div>
             </motion.div>
