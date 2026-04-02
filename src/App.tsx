@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Eye, 
   EyeOff, 
@@ -21,7 +21,12 @@ import {
   ShieldCheck,
   LayoutGrid,
   X,
-  Receipt
+  Receipt,
+  Moon,
+  Sun,
+  LogOut,
+  ChevronLeft,
+  Barcode as BarcodeIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -55,6 +60,12 @@ const InfoCard = ({ title, description, badge }: { title: string, description: s
 );
 
 export default function App() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [cpf, setCpf] = useState("");
+  const [password, setPassword] = useState("");
+  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+
   const [activeScreen, setActiveScreen] = useState<'home' | 'pix-area' | 'make-pix' | 'receipt' | 'loan-home' | 'loan-simulate' | 'loan-confirm' | 'loan-success'>('home');
   const [showBalance, setShowBalance] = useState(true);
   const [balance, setBalance] = useState(1250.00);
@@ -80,6 +91,14 @@ export default function App() {
   const [activeLoans, setActiveLoans] = useState<{ amount: number, installments: number, total: number, rate: number, date: string }[]>([]);
   const [loanSimulation, setLoanSimulation] = useState({ amount: 5000, installments: 12 });
   const LOAN_INTEREST_RATE = 0.0475; // 4.75% monthly
+
+  useEffect(() => {
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, [isDarkMode]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('pt-BR', {
@@ -128,6 +147,164 @@ export default function App() {
     }
   };
 
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (cpf.length >= 11 && password.length >= 4) {
+      setIsLoggedIn(true);
+    } else {
+      alert("Por favor, preencha o CPF e a senha corretamente.");
+    }
+  };
+
+  const renderLogin = () => (
+    <div className="bg-nu-purple min-h-screen flex flex-col p-8 text-white">
+      <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
+        <div className="mb-12">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8zm-1-13h2v6h-2zm0 8h2v2h-2z" opacity=".3"/>
+            <path d="M12 2L4.5 20.29l.71.71L12 18l6.79 3 .71-.71L12 2z"/>
+          </svg>
+          <h1 className="text-4xl font-bold mt-6">Olá!</h1>
+          <p className="text-white/80 mt-2">Digite seu CPF para entrar.</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase tracking-wider text-white/60">CPF</label>
+            <input 
+              type="text" 
+              value={cpf}
+              onChange={(e) => setCpf(e.target.value)}
+              placeholder="000.000.000-00"
+              className="w-full bg-transparent border-b border-white/30 py-3 text-xl font-medium outline-none focus:border-white transition-colors"
+              maxLength={14}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-xs font-bold uppercase tracking-wider text-white/60">Senha</label>
+            <input 
+              type="password" 
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Sua senha"
+              className="w-full bg-transparent border-b border-white/30 py-3 text-xl font-medium outline-none focus:border-white transition-colors"
+            />
+          </div>
+
+          <button 
+            type="submit"
+            className="w-full bg-white text-nu-purple py-4 rounded-full font-bold text-lg shadow-xl active:scale-95 transition-transform mt-8"
+          >
+            Continuar
+          </button>
+        </form>
+
+        <div className="mt-8 space-y-4 text-center">
+          <button className="text-sm font-bold text-white/80 hover:text-white transition-colors">Esqueci minha senha</button>
+          <div className="pt-4">
+            <p className="text-xs text-white/60">Ainda não tem conta?</p>
+            <button className="text-sm font-bold text-white mt-1">Criar conta</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderSettings = () => (
+    <AnimatePresence>
+      {isSettingsOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 sm:p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsSettingsOpen(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+          />
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="relative w-full max-w-md bg-white dark:bg-[#111111] rounded-3xl overflow-hidden shadow-2xl m-4"
+          >
+            <div className="p-6 border-b border-nu-gray flex justify-between items-center">
+              <h3 className="text-xl font-bold">Configurações</h3>
+              <button 
+                onClick={() => setIsSettingsOpen(false)}
+                className="p-2 hover:bg-nu-gray rounded-full transition-colors"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-2">
+              <div 
+                onClick={() => setIsDarkMode(!isDarkMode)}
+                className="flex items-center justify-between p-4 rounded-2xl hover:bg-nu-gray cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-nu-purple/10 flex items-center justify-center text-nu-purple">
+                    {isDarkMode ? <Sun size={20} /> : <Moon size={20} />}
+                  </div>
+                  <div>
+                    <p className="font-bold">Modo Noturno</p>
+                    <p className="text-xs text-nu-text-muted">{isDarkMode ? 'Ativado' : 'Desativado'}</p>
+                  </div>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors ${isDarkMode ? 'bg-nu-purple' : 'bg-gray-300'}`}>
+                  <motion.div 
+                    animate={{ x: isDarkMode ? 24 : 4 }}
+                    className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-2xl hover:bg-nu-gray cursor-pointer transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-nu-purple/10 flex items-center justify-center text-nu-purple">
+                    <User size={20} />
+                  </div>
+                  <p className="font-bold">Perfil</p>
+                </div>
+                <ChevronRight size={20} className="text-nu-text-muted" />
+              </div>
+
+              <div className="flex items-center justify-between p-4 rounded-2xl hover:bg-nu-gray cursor-pointer transition-colors">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-nu-purple/10 flex items-center justify-center text-nu-purple">
+                    <HelpCircle size={20} />
+                  </div>
+                  <p className="font-bold">Ajuda</p>
+                </div>
+                <ChevronRight size={20} className="text-nu-text-muted" />
+              </div>
+
+              <div 
+                onClick={() => {
+                  setIsLoggedIn(false);
+                  setIsSettingsOpen(false);
+                }}
+                className="flex items-center justify-between p-4 rounded-2xl hover:bg-red-50 text-red-500 cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                    <LogOut size={20} />
+                  </div>
+                  <p className="font-bold">Sair do app</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="p-6 bg-nu-gray/30 text-center">
+              <p className="text-[10px] text-nu-text-muted">Nubank Clone v2.0.0</p>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+
   const renderHome = () => (
     <>
       {/* Header */}
@@ -141,7 +318,11 @@ export default function App() {
               {showBalance ? <Eye size={24} /> : <EyeOff size={24} />}
             </button>
             <HelpCircle size={24} className="text-white cursor-pointer" />
-            <Settings size={24} className="text-white cursor-pointer" />
+            <Settings 
+              size={24} 
+              className="text-white cursor-pointer" 
+              onClick={() => setIsSettingsOpen(true)}
+            />
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -764,26 +945,34 @@ export default function App() {
   );
 
   return (
-    <div className="max-w-md mx-auto min-h-screen bg-white pb-24 relative overflow-x-hidden">
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={activeScreen}
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={{ opacity: 0, x: -20 }}
-          transition={{ duration: 0.2 }}
-        >          {activeScreen === 'home' && renderHome()}
-          {activeScreen === 'pix-area' && renderPixArea()}
-          {activeScreen === 'make-pix' && renderMakePix()}
-          {activeScreen === 'receipt' && renderReceipt()}
-          {activeScreen === 'loan-home' && renderLoanHome()}
-          {activeScreen === 'loan-simulate' && renderLoanSimulate()}
-          {activeScreen === 'loan-confirm' && renderLoanConfirm()}
-          {activeScreen === 'loan-success' && renderLoanSuccess()}
-        </motion.div>
-      </AnimatePresence>
-      <AnimatePresence>
-        {selectedTransaction && (
+    <div className="max-w-md mx-auto min-h-screen bg-white dark:bg-[#000000] pb-24 relative overflow-x-hidden transition-colors duration-300">
+      {!isLoggedIn ? (
+        renderLogin()
+      ) : (
+        <>
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={activeScreen}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.2 }}
+            >
+              {activeScreen === 'home' && renderHome()}
+              {activeScreen === 'pix-area' && renderPixArea()}
+              {activeScreen === 'make-pix' && renderMakePix()}
+              {activeScreen === 'receipt' && renderReceipt()}
+              {activeScreen === 'loan-home' && renderLoanHome()}
+              {activeScreen === 'loan-simulate' && renderLoanSimulate()}
+              {activeScreen === 'loan-confirm' && renderLoanConfirm()}
+              {activeScreen === 'loan-success' && renderLoanSuccess()}
+            </motion.div>
+          </AnimatePresence>
+
+          {renderSettings()}
+
+          <AnimatePresence>
+            {selectedTransaction && (
           <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4">
             <motion.div 
               initial={{ opacity: 0 }}
@@ -873,6 +1062,8 @@ export default function App() {
             <BarChart3 size={24} />
           </div>
         </nav>
+      )}
+        </>
       )}
     </div>
   );

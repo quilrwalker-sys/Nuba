@@ -13,8 +13,18 @@
 
 @layer base {
   body {
-    @apply bg-white text-nu-text font-sans antialiased;
+    @apply bg-white text-nu-text font-sans antialiased transition-colors duration-300;
   }
+  
+  .dark body {
+    @apply bg-[#000000] text-white;
+  }
+}
+
+.dark {
+  --color-nu-gray: #1A1A1A;
+  --color-nu-text: #FFFFFF;
+  --color-nu-text-muted: #A0A0A0;
 }
 
 /* Custom scrollbar for horizontal actions */
