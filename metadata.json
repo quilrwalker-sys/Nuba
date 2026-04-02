@@ -1,0 +1,5 @@
+{
+  "name": "Nubank Clone",
+  "description": "A high-fidelity Nubank interface clone featuring account balance, quick actions, and credit card management.",
+  "requestFramePermissions": []
+}

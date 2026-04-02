@@ -1,0 +1,27 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-nu-purple: #820AD1;
+  --color-nu-purple-dark: #6D08B1;
+  --color-nu-purple-light: #9B30E3;
+  --color-nu-gray: #F0F1F5;
+  --color-nu-text: #111111;
+  --color-nu-text-muted: #767676;
+}
+
+@layer base {
+  body {
+    @apply bg-white text-nu-text font-sans antialiased;
+  }
+}
+
+/* Custom scrollbar for horizontal actions */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
