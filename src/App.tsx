@@ -34,26 +34,26 @@ import { motion, AnimatePresence } from 'motion/react';
 
 const IconButton = ({ icon: Icon, label }: { icon: any, label: string }) => (
   <div className="flex flex-col items-center gap-2 min-w-[80px]">
-    <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center hover:bg-gray-200 transition-colors cursor-pointer">
+    <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center hover:opacity-80 transition-all cursor-pointer">
       <Icon size={24} className="text-nu-text" />
     </div>
-    <span className="text-xs font-semibold text-center">{label}</span>
+    <span className="text-xs font-semibold text-center text-nu-text">{label}</span>
   </div>
 );
 
 const Card = ({ children, className = "", onClick }: { children: React.ReactNode, className?: string, onClick?: () => void }) => (
   <div 
     onClick={onClick}
-    className={`p-6 border-b border-nu-gray hover:bg-gray-50 transition-colors cursor-pointer ${className}`}
+    className={`p-6 border-b border-nu-gray hover:bg-nu-gray/50 transition-colors cursor-pointer ${className}`}
   >
     {children}
   </div>
 );
 
 const InfoCard = ({ title, description, badge }: { title: string, description: string, badge?: string }) => (
-  <div className="min-w-[280px] p-5 bg-nu-gray rounded-2xl flex flex-col gap-2 cursor-pointer hover:bg-gray-200 transition-colors">
+  <div className="min-w-[280px] p-5 bg-nu-gray rounded-2xl flex flex-col gap-2 cursor-pointer hover:bg-nu-gray/80 transition-colors">
     {badge && <span className="text-nu-purple text-xs font-bold">{badge}</span>}
-    <p className="text-sm leading-relaxed">
+    <p className="text-sm leading-relaxed text-nu-text">
       <span className="font-bold">{title}</span> {description}
     </p>
   </div>
@@ -100,11 +100,13 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  const formatCurrency = (value: number) => {
+  const formatCurrency = (value: number | string) => {
+    const num = typeof value === 'string' ? parseFloat(value.replace(',', '.')) : value;
+    if (isNaN(num)) return "R$ 0,00";
     return new Intl.NumberFormat('pt-BR', {
       style: 'currency',
       currency: 'BRL',
-    }).format(value);
+    }).format(num);
   };
 
   const handleSaveBalance = () => {
@@ -149,11 +151,24 @@ export default function App() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (cpf.length >= 11 && password.length >= 4) {
+    if (cpf.replace(/\D/g, "").length === 11 && password.length >= 4) {
       setIsLoggedIn(true);
     } else {
-      alert("Por favor, preencha o CPF e a senha corretamente.");
+      alert("Por favor, preencha o CPF (11 dígitos) e a senha corretamente.");
     }
+  };
+
+  const handleCpfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value.replace(/\D/g, "");
+    let formatted = value;
+    if (value.length > 9) {
+      formatted = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6, 9)}-${value.slice(9, 11)}`;
+    } else if (value.length > 6) {
+      formatted = `${value.slice(0, 3)}.${value.slice(3, 6)}.${value.slice(6)}`;
+    } else if (value.length > 3) {
+      formatted = `${value.slice(0, 3)}.${value.slice(3)}`;
+    }
+    setCpf(formatted.slice(0, 14));
   };
 
   const renderLogin = () => (
@@ -174,7 +189,7 @@ export default function App() {
             <input 
               type="text" 
               value={cpf}
-              onChange={(e) => setCpf(e.target.value)}
+              onChange={handleCpfChange}
               placeholder="000.000.000-00"
               className="w-full bg-transparent border-b border-white/30 py-3 text-xl font-medium outline-none focus:border-white transition-colors"
               maxLength={14}
@@ -288,7 +303,7 @@ export default function App() {
                 className="flex items-center justify-between p-4 rounded-2xl hover:bg-red-50 text-red-500 cursor-pointer transition-colors"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
                     <LogOut size={20} />
                   </div>
                   <p className="font-bold">Sair do app</p>
@@ -355,19 +370,19 @@ export default function App() {
         {/* Account Balance */}
         <Card className="relative">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-bold">Conta</h2>
+            <h2 className="text-xl font-bold text-nu-text">Conta</h2>
             <ChevronRight size={20} className="text-nu-text-muted" />
           </div>
           <div className="h-10 flex items-center">
             {showBalance ? (
               isEditingBalance ? (
                 <div className="flex items-center gap-2 w-full">
-                  <span className="text-2xl font-bold">R$</span>
+                  <span className="text-2xl font-bold text-nu-text">R$</span>
                   <input 
                     type="text"
                     value={tempBalance}
                     onChange={(e) => setTempBalance(e.target.value)}
-                    className="text-2xl font-bold border-b-2 border-nu-purple outline-none w-full"
+                    className="text-2xl font-bold border-b-2 border-nu-purple outline-none w-full bg-transparent text-nu-text"
                     autoFocus
                     onBlur={handleSaveBalance}
                     onKeyDown={(e) => e.key === 'Enter' && handleSaveBalance()}
@@ -377,7 +392,7 @@ export default function App() {
                 <motion.span 
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
-                  className="text-2xl font-bold cursor-pointer hover:text-nu-purple transition-colors"
+                  className="text-2xl font-bold cursor-pointer hover:text-nu-purple transition-colors text-nu-text"
                   onClick={() => {
                     setTempBalance(balance.toString());
                     setIsEditingBalance(true);
@@ -398,7 +413,7 @@ export default function App() {
           <div onClick={() => setActiveScreen('pix-area')}>
             <IconButton icon={QrCode} label="Área Pix" />
           </div>
-          <IconButton icon={Barcode} label="Pagar" />
+          <IconButton icon={BarcodeIcon} label="Pagar" />
           <IconButton icon={Receipt} label="Pagar Contas" />
           <IconButton icon={ArrowDownCircle} label="Pegar emprestado" />
           <IconButton icon={ArrowUpCircle} label="Transferir" />
@@ -409,9 +424,9 @@ export default function App() {
 
         {/* My Cards */}
         <div className="px-6 mb-6">
-          <div className="bg-nu-gray p-4 rounded-xl flex items-center gap-4 cursor-pointer hover:bg-gray-200 transition-colors">
-            <CreditCard size={20} />
-            <span className="text-sm font-bold">Meus cartões</span>
+          <div className="bg-nu-gray p-4 rounded-xl flex items-center gap-4 cursor-pointer hover:opacity-80 transition-all">
+            <CreditCard size={20} className="text-nu-text" />
+            <span className="text-sm font-bold text-nu-text">Meus cartões</span>
           </div>
         </div>
 
@@ -436,8 +451,8 @@ export default function App() {
         <Card>
           <div className="flex justify-between items-center mb-4">
             <div className="flex flex-col gap-1">
-              <CreditCard size={24} className="mb-2" />
-              <h2 className="text-xl font-bold">Cartão de crédito</h2>
+              <CreditCard size={24} className="mb-2 text-nu-text" />
+              <h2 className="text-xl font-bold text-nu-text">Cartão de crédito</h2>
             </div>
             <ChevronRight size={20} className="text-nu-text-muted" />
           </div>
@@ -445,12 +460,12 @@ export default function App() {
             <span className="text-nu-text-muted text-sm font-semibold">Fatura atual</span>
             {isEditingInvoice ? (
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold">R$</span>
+                <span className="text-2xl font-bold text-nu-text">R$</span>
                 <input 
                   type="text"
                   value={tempInvoice}
                   onChange={(e) => setTempInvoice(e.target.value)}
-                  className="text-2xl font-bold border-b-2 border-nu-purple outline-none w-full"
+                  className="text-2xl font-bold border-b-2 border-nu-purple outline-none w-full bg-transparent text-nu-text"
                   autoFocus
                   onBlur={handleSaveInvoice}
                   onKeyDown={(e) => e.key === 'Enter' && handleSaveInvoice()}
@@ -458,7 +473,7 @@ export default function App() {
               </div>
             ) : (
               <span 
-                className="text-2xl font-bold cursor-pointer hover:text-nu-purple transition-colors"
+                className="text-2xl font-bold cursor-pointer hover:text-nu-purple transition-colors text-nu-text"
                 onClick={() => {
                   setTempInvoice(invoice.toString());
                   setIsEditingInvoice(true);
@@ -476,8 +491,8 @@ export default function App() {
         <Card onClick={() => setActiveScreen('loan-home')}>
           <div className="flex justify-between items-center mb-4">
             <div className="flex flex-col gap-1">
-              <DollarSign size={24} className="mb-2" />
-              <h2 className="text-xl font-bold">Empréstimo</h2>
+              <DollarSign size={24} className="mb-2 text-nu-text" />
+              <h2 className="text-xl font-bold text-nu-text">Empréstimo</h2>
             </div>
             <ChevronRight size={20} className="text-nu-text-muted" />
           </div>
@@ -492,8 +507,8 @@ export default function App() {
         <Card>
           <div className="flex justify-between items-center mb-4">
             <div className="flex flex-col gap-1">
-              <TrendingUp size={24} className="mb-2" />
-              <h2 className="text-xl font-bold">Investimentos</h2>
+              <TrendingUp size={24} className="mb-2 text-nu-text" />
+              <h2 className="text-xl font-bold text-nu-text">Investimentos</h2>
             </div>
             <ChevronRight size={20} className="text-nu-text-muted" />
           </div>
@@ -502,11 +517,11 @@ export default function App() {
 
         {/* Insurance Section */}
         <div className="p-6">
-          <h2 className="text-xl font-bold mb-4">Seguros</h2>
-          <div className="bg-nu-gray p-5 rounded-2xl flex items-center justify-between cursor-pointer hover:bg-gray-200 transition-colors">
+          <h2 className="text-xl font-bold mb-4 text-nu-text">Seguros</h2>
+          <div className="bg-nu-gray p-5 rounded-2xl flex items-center justify-between cursor-pointer hover:opacity-80 transition-all">
             <div className="flex items-center gap-4">
               <Heart size={20} className="text-nu-purple" />
-              <span className="font-bold text-sm">Seguro de vida</span>
+              <span className="font-bold text-sm text-nu-text">Seguro de vida</span>
             </div>
             <span className="text-nu-purple font-bold text-sm">Conhecer</span>
           </div>
@@ -516,8 +531,8 @@ export default function App() {
         <Card>
           <div className="flex justify-between items-center mb-4">
             <div className="flex flex-col gap-1">
-              <ShoppingBag size={24} className="mb-2" />
-              <h2 className="text-xl font-bold">Shopping</h2>
+              <ShoppingBag size={24} className="mb-2 text-nu-text" />
+              <h2 className="text-xl font-bold text-nu-text">Shopping</h2>
             </div>
             <ChevronRight size={20} className="text-nu-text-muted" />
           </div>
@@ -527,7 +542,7 @@ export default function App() {
         {/* Transaction History */}
         <div className="p-6 border-b border-nu-gray">
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-xl font-bold">Histórico de Pix</h2>
+            <h2 className="text-xl font-bold text-nu-text">Histórico de Pix</h2>
             <ChevronRight size={20} className="text-nu-text-muted" />
           </div>
           {transactions.length > 0 ? (
@@ -535,7 +550,7 @@ export default function App() {
               {transactions.map((t, i) => (
                 <div 
                   key={i} 
-                  className="flex items-center justify-between cursor-pointer hover:bg-gray-100 p-2 -mx-2 rounded-lg transition-colors"
+                  className="flex items-center justify-between cursor-pointer hover:bg-nu-gray/50 p-2 -mx-2 rounded-lg transition-colors"
                   onClick={() => setSelectedTransaction(t)}
                 >
                   <div className="flex items-center gap-4">
@@ -543,7 +558,7 @@ export default function App() {
                       <QrCode size={20} className="text-nu-purple" />
                     </div>
                     <div>
-                      <p className="font-bold text-sm">Transferência enviada</p>
+                      <p className="font-bold text-sm text-nu-text">Transferência enviada</p>
                       <p className="text-xs text-nu-text-muted">{t.recipient}</p>
                       <p className="text-[10px] text-nu-text-muted mt-1">{t.date}</p>
                     </div>
@@ -561,12 +576,12 @@ export default function App() {
 
         {/* Discover More */}
         <div className="p-6">
-          <h2 className="text-xl font-bold mb-4">Descubra mais</h2>
+          <h2 className="text-xl font-bold mb-4 text-nu-text">Descubra mais</h2>
           <div className="flex overflow-x-auto gap-4 no-scrollbar">
             <div className="min-w-[240px] bg-nu-gray rounded-2xl overflow-hidden cursor-pointer">
               <img src="https://picsum.photos/seed/nu1/400/200" alt="Nu" className="w-full h-32 object-cover" referrerPolicy="no-referrer" />
               <div className="p-4">
-                <h3 className="font-bold text-sm mb-1">Nu Reserva Imediata</h3>
+                <h3 className="font-bold text-sm mb-1 text-nu-text">Nu Reserva Imediata</h3>
                 <p className="text-xs text-nu-text-muted mb-3">O fundo de renda fixa para sua reserva de emergência.</p>
                 <button className="bg-nu-purple text-white px-4 py-2 rounded-full text-xs font-bold">Conhecer</button>
               </div>
@@ -574,7 +589,7 @@ export default function App() {
             <div className="min-w-[240px] bg-nu-gray rounded-2xl overflow-hidden cursor-pointer">
               <img src="https://picsum.photos/seed/nu2/400/200" alt="Nu" className="w-full h-32 object-cover" referrerPolicy="no-referrer" />
               <div className="p-4">
-                <h3 className="font-bold text-sm mb-1">Indique seus amigos</h3>
+                <h3 className="font-bold text-sm mb-1 text-nu-text">Indique seus amigos</h3>
                 <p className="text-xs text-nu-text-muted mb-3">Espalhe a liberdade financeira para quem você gosta.</p>
                 <button className="bg-nu-purple text-white px-4 py-2 rounded-full text-xs font-bold">Indicar</button>
               </div>
@@ -586,7 +601,7 @@ export default function App() {
   );
 
   const renderPixArea = () => (
-    <div className="bg-white min-h-screen">
+    <div className="bg-white dark:bg-[#000000] min-h-screen transition-colors duration-300">
       <header className="p-6 flex items-center justify-between">
         <button onClick={() => setActiveScreen('home')} className="text-nu-text">
           <ChevronRight size={24} className="rotate-180" />
@@ -594,42 +609,42 @@ export default function App() {
         <HelpCircle size={24} className="text-nu-text-muted" />
       </header>
       <div className="px-6 pb-6">
-        <h1 className="text-3xl font-bold mb-8">Área Pix</h1>
+        <h1 className="text-3xl font-bold mb-8 text-nu-text">Área Pix</h1>
         <p className="text-nu-text-muted mb-8">Envie e receba pagamentos a qualquer hora, 7 dias por semana.</p>
         
         <div className="grid grid-cols-3 gap-6 mb-12">
           <div onClick={() => setActiveScreen('make-pix')} className="flex flex-col items-center gap-2 cursor-pointer">
-            <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center">
-              <ArrowUpCircle size={24} />
+            <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center hover:opacity-80 transition-all">
+              <ArrowUpCircle size={24} className="text-nu-text" />
             </div>
-            <span className="text-xs font-bold text-center">Transferir</span>
+            <span className="text-xs font-bold text-center text-nu-text">Transferir</span>
           </div>
           <div className="flex flex-col items-center gap-2 cursor-pointer">
-            <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center">
-              <QrCode size={24} />
+            <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center hover:opacity-80 transition-all">
+              <QrCode size={24} className="text-nu-text" />
             </div>
-            <span className="text-xs font-bold text-center">Ler QR code</span>
+            <span className="text-xs font-bold text-center text-nu-text">Ler QR code</span>
           </div>
           <div className="flex flex-col items-center gap-2 cursor-pointer">
-            <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center">
-              <Barcode size={24} />
+            <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center hover:opacity-80 transition-all">
+              <BarcodeIcon size={24} className="text-nu-text" />
             </div>
-            <span className="text-xs font-bold text-center">Copia e Cola</span>
+            <span className="text-xs font-bold text-center text-nu-text">Copia e Cola</span>
           </div>
         </div>
 
         <div className="space-y-6">
-          <div className="flex items-center justify-between p-4 border-b border-nu-gray">
+          <div className="flex items-center justify-between p-4 border-b border-nu-gray hover:bg-nu-gray/30 cursor-pointer transition-colors">
             <div className="flex items-center gap-4">
               <Settings size={20} className="text-nu-text-muted" />
-              <span className="font-bold">Configurar Pix</span>
+              <span className="font-bold text-nu-text">Configurar Pix</span>
             </div>
             <ChevronRight size={20} className="text-nu-text-muted" />
           </div>
-          <div className="flex items-center justify-between p-4 border-b border-nu-gray">
+          <div className="flex items-center justify-between p-4 border-b border-nu-gray hover:bg-nu-gray/30 cursor-pointer transition-colors">
             <div className="flex items-center gap-4">
               <ShieldCheck size={20} className="text-nu-text-muted" />
-              <span className="font-bold">Minhas chaves</span>
+              <span className="font-bold text-nu-text">Minhas chaves</span>
             </div>
             <ChevronRight size={20} className="text-nu-text-muted" />
           </div>
@@ -639,35 +654,35 @@ export default function App() {
   );
 
   const renderMakePix = () => (
-    <div className="bg-white min-h-screen p-6">
+    <div className="bg-white dark:bg-[#000000] min-h-screen p-6 transition-colors duration-300">
       <header className="flex items-center mb-8">
         <button onClick={() => setActiveScreen('pix-area')} className="text-nu-text">
           <ChevronRight size={24} className="rotate-180" />
         </button>
       </header>
-      <h1 className="text-2xl font-bold mb-8">Qual é o valor da transferência?</h1>
+      <h1 className="text-2xl font-bold mb-8 text-nu-text">Qual é o valor da transferência?</h1>
       <div className="mb-8">
         <div className="flex items-center gap-2 border-b-2 border-nu-purple py-2">
-          <span className="text-4xl font-bold">R$</span>
+          <span className="text-4xl font-bold text-nu-text">R$</span>
           <input 
             type="text"
             placeholder="0,00"
             value={pixValue}
             onChange={(e) => setPixValue(e.target.value)}
-            className="text-4xl font-bold outline-none w-full"
+            className="text-4xl font-bold outline-none w-full bg-transparent text-nu-text"
             autoFocus
           />
         </div>
-        <p className="mt-4 text-nu-text-muted">Saldo disponível: {formatCurrency(balance)}</p>
+        <p className="mt-4 text-nu-text-muted">Saldo disponível: <span className="text-nu-text font-bold">{formatCurrency(balance)}</span></p>
       </div>
       <div className="mb-12">
-        <label className="block text-sm font-bold mb-2">Para quem você quer transferir?</label>
+        <label className="block text-sm font-bold mb-2 text-nu-text">Para quem você quer transferir?</label>
         <input 
           type="text"
           placeholder="Nome ou CPF/CNPJ"
           value={pixRecipient}
           onChange={(e) => setPixRecipient(e.target.value)}
-          className="w-full p-4 bg-nu-gray rounded-xl outline-none font-bold"
+          className="w-full p-4 bg-nu-gray rounded-xl outline-none font-bold text-nu-text"
         />
       </div>
       <button 
@@ -680,45 +695,45 @@ export default function App() {
   );
 
   const renderReceipt = () => (
-    <div className="bg-white min-h-screen flex flex-col">
+    <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col transition-colors duration-300">
       <header className="p-6">
         <button onClick={() => setActiveScreen('home')} className="text-nu-text">
           <ChevronRight size={24} className="rotate-180" />
         </button>
       </header>
       <div className="flex-1 px-6 flex flex-col items-center justify-center text-center">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mb-6">
-          <ShieldCheck size={40} className="text-green-600" />
+        <div className="w-20 h-20 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mb-6">
+          <ShieldCheck size={40} className="text-green-600 dark:text-green-400" />
         </div>
-        <h1 className="text-2xl font-bold mb-2">Transferência realizada!</h1>
+        <h1 className="text-2xl font-bold mb-2 text-nu-text">Transferência realizada!</h1>
         <p className="text-nu-text-muted mb-8">Seu Pix foi enviado com sucesso.</p>
         
         <div className="w-full bg-nu-gray rounded-2xl p-6 text-left space-y-4">
           <div className="flex justify-between">
             <span className="text-nu-text-muted text-sm">Valor</span>
-            <span className="font-bold">{formatCurrency(lastTransaction?.value || 0)}</span>
+            <span className="font-bold text-nu-text">{formatCurrency(lastTransaction?.value || 0)}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-nu-text-muted text-sm">Para</span>
-            <span className="font-bold">{lastTransaction?.recipient}</span>
+            <span className="font-bold text-nu-text">{lastTransaction?.recipient}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-nu-text-muted text-sm">Data</span>
-            <span className="font-bold text-sm">{lastTransaction?.date}</span>
+            <span className="font-bold text-sm text-nu-text">{lastTransaction?.date}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-nu-text-muted text-sm">Tipo</span>
-            <span className="font-bold">Pix</span>
+            <span className="font-bold text-nu-text">Pix</span>
           </div>
         </div>
       </div>
       <div className="p-6 space-y-4">
-        <button className="w-full border-2 border-nu-purple text-nu-purple py-4 rounded-full font-bold">
+        <button className="w-full border-2 border-nu-purple text-nu-purple py-4 rounded-full font-bold hover:bg-nu-purple/5 transition-colors">
           Enviar comprovante
         </button>
         <button 
           onClick={() => setActiveScreen('home')}
-          className="w-full bg-nu-purple text-white py-4 rounded-full font-bold"
+          className="w-full bg-nu-purple text-white py-4 rounded-full font-bold shadow-lg"
         >
           Voltar ao início
         </button>
@@ -727,7 +742,7 @@ export default function App() {
   );
 
   const renderLoanHome = () => (
-    <div className="bg-white min-h-screen flex flex-col">
+    <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col transition-colors duration-300">
       <header className="p-6 flex items-center justify-between">
         <button onClick={() => setActiveScreen('home')} className="text-nu-text">
           <ChevronRight size={24} className="rotate-180" />
@@ -735,30 +750,30 @@ export default function App() {
         <HelpCircle size={24} className="text-nu-text-muted" />
       </header>
       <div className="px-6 flex-1">
-        <h1 className="text-3xl font-bold mb-4">Empréstimo</h1>
+        <h1 className="text-3xl font-bold mb-4 text-nu-text">Empréstimo</h1>
         
         {activeLoans.length > 0 ? (
           <div className="space-y-6 mt-8">
-            <h2 className="text-lg font-bold">Seus empréstimos ativos</h2>
+            <h2 className="text-lg font-bold text-nu-text">Seus empréstimos ativos</h2>
             {activeLoans.map((loan, idx) => (
               <div key={idx} className="bg-nu-gray p-6 rounded-2xl space-y-3">
                 <div className="flex justify-between">
                   <span className="text-nu-text-muted text-sm">Valor contratado</span>
-                  <span className="font-bold">{formatCurrency(loan.amount)}</span>
+                  <span className="font-bold text-nu-text">{formatCurrency(loan.amount)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-nu-text-muted text-sm">Parcelas</span>
-                  <span className="font-bold">{loan.installments}x de {formatCurrency(loan.total / loan.installments)}</span>
+                  <span className="font-bold text-nu-text">{loan.installments}x de {formatCurrency(loan.total / loan.installments)}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-nu-text-muted text-sm">Data de contratação</span>
-                  <span className="font-bold text-sm">{loan.date}</span>
+                  <span className="font-bold text-sm text-nu-text">{loan.date}</span>
                 </div>
               </div>
             ))}
             <button 
               onClick={() => setActiveScreen('loan-simulate')}
-              className="w-full border-2 border-nu-purple text-nu-purple py-4 rounded-full font-bold mt-4"
+              className="w-full border-2 border-nu-purple text-nu-purple py-4 rounded-full font-bold mt-4 hover:bg-nu-purple/5 transition-colors"
             >
               Novo empréstimo
             </button>
@@ -789,30 +804,30 @@ export default function App() {
     const installmentValue = totalToPay / loanSimulation.installments;
 
     return (
-      <div className="bg-white min-h-screen flex flex-col p-6">
+      <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col p-6 transition-colors duration-300">
         <header className="mb-8">
           <button onClick={() => setActiveScreen('loan-home')} className="text-nu-text">
             <ChevronRight size={24} className="rotate-180" />
           </button>
         </header>
         
-        <h1 className="text-2xl font-bold mb-8">Quanto você precisa?</h1>
+        <h1 className="text-2xl font-bold mb-8 text-nu-text">Quanto você precisa?</h1>
         
         <div className="mb-8">
           <div className="flex items-center gap-2 border-b-2 border-nu-purple py-2">
-            <span className="text-4xl font-bold">R$</span>
+            <span className="text-4xl font-bold text-nu-text">R$</span>
             <input 
               type="number"
               value={loanSimulation.amount}
               onChange={(e) => setLoanSimulation({ ...loanSimulation, amount: Number(e.target.value) })}
-              className="text-4xl font-bold outline-none w-full"
+              className="text-4xl font-bold outline-none w-full bg-transparent text-nu-text"
               autoFocus
             />
           </div>
           <p className="mt-4 text-nu-text-muted text-sm italic">Mínimo R$ 500,00 • Máximo R$ 15.000,00</p>
         </div>
 
-        <h2 className="text-lg font-bold mb-4">Em quantas parcelas?</h2>
+        <h2 className="text-lg font-bold mb-4 text-nu-text">Em quantas parcelas?</h2>
         <div className="grid grid-cols-3 gap-3 mb-12">
           {installmentsOptions.map(opt => (
             <button 
@@ -828,15 +843,15 @@ export default function App() {
         <div className="bg-nu-gray p-6 rounded-2xl mb-8">
           <div className="flex justify-between mb-2">
             <span className="text-nu-text-muted">Valor da parcela</span>
-            <span className="font-bold">{formatCurrency(installmentValue)}</span>
+            <span className="font-bold text-nu-text">{formatCurrency(installmentValue)}</span>
           </div>
           <div className="flex justify-between mb-2">
             <span className="text-nu-text-muted">Taxa de juros</span>
             <span className="font-bold text-green-600">{(LOAN_INTEREST_RATE * 100).toFixed(2)}% ao mês</span>
           </div>
-          <div className="flex justify-between border-t border-gray-300 pt-2 mt-2">
+          <div className="flex justify-between border-t border-gray-300 dark:border-gray-700 pt-2 mt-2">
             <span className="text-nu-text-muted">Total a pagar</span>
-            <span className="font-bold">{formatCurrency(totalToPay)}</span>
+            <span className="font-bold text-nu-text">{formatCurrency(totalToPay)}</span>
           </div>
         </div>
 
@@ -869,7 +884,7 @@ export default function App() {
     };
 
     return (
-      <div className="bg-white min-h-screen flex flex-col p-6">
+      <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col p-6 transition-colors duration-300">
         <header className="mb-8">
           <button onClick={() => setActiveScreen('loan-simulate')} className="text-nu-text">
             <ChevronRight size={24} className="rotate-180" />
@@ -883,7 +898,7 @@ export default function App() {
           <div className="flex justify-between border-b border-nu-gray pb-4">
             <div className="flex flex-col">
               <span className="text-nu-text-muted text-sm">Valor que você recebe</span>
-              <span className="text-xl font-bold">{formatCurrency(loanSimulation.amount)}</span>
+              <span className="text-xl font-bold text-nu-text">{formatCurrency(loanSimulation.amount)}</span>
             </div>
             <DollarSign className="text-nu-purple" />
           </div>
@@ -891,7 +906,7 @@ export default function App() {
           <div className="flex justify-between border-b border-nu-gray pb-4">
             <div className="flex flex-col">
               <span className="text-nu-text-muted text-sm">Custo total do empréstimo</span>
-              <span className="text-xl font-bold">{formatCurrency(totalToPay)}</span>
+              <span className="text-xl font-bold text-nu-text">{formatCurrency(totalToPay)}</span>
             </div>
             <TrendingUp className="text-nu-purple" />
           </div>
@@ -899,7 +914,7 @@ export default function App() {
           <div className="flex justify-between border-b border-nu-gray pb-4">
             <div className="flex flex-col">
               <span className="text-nu-text-muted text-sm">Primeiro pagamento</span>
-              <span className="text-xl font-bold">Em 30 dias</span>
+              <span className="text-xl font-bold text-nu-text">Em 30 dias</span>
             </div>
             <ShieldCheck className="text-nu-purple" />
           </div>
@@ -986,13 +1001,13 @@ export default function App() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="relative w-full max-w-md bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
+              className="relative w-full max-w-md bg-white dark:bg-[#111111] rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl"
             >
               <div className="p-6 border-b border-nu-gray flex justify-between items-center">
-                <h3 className="text-xl font-bold">Detalhes da transação</h3>
+                <h3 className="text-xl font-bold text-nu-text">Detalhes da transação</h3>
                 <button 
                   onClick={() => setSelectedTransaction(null)}
-                  className="p-2 hover:bg-nu-gray rounded-full transition-colors"
+                  className="p-2 hover:bg-nu-gray rounded-full transition-colors text-nu-text"
                 >
                   <X size={24} />
                 </button>
@@ -1046,7 +1061,7 @@ export default function App() {
 
       {/* Bottom Navigation */}
       {activeScreen === 'home' && (
-        <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-nu-gray px-6 py-3 flex justify-around items-center max-w-md mx-auto z-50">
+        <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-nu-gray px-6 py-3 flex justify-around items-center max-w-md mx-auto z-50">
           <div className="flex flex-col items-center gap-1 text-nu-purple">
             <div className="p-2 rounded-full bg-nu-purple/10">
               <LayoutGrid size={24} />
@@ -1068,10 +1083,3 @@ export default function App() {
     </div>
   );
 }
-
-// Helper for missing icon
-const Barcode = ({ size, className }: { size: number, className?: string }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-    <path d="M3 5v14" /><path d="M8 5v14" /><path d="M12 5v14" /><path d="M17 5v14" /><path d="M21 5v14" />
-  </svg>
-);
