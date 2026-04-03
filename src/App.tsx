@@ -115,6 +115,7 @@ const InfoCard = ({ title, description, badge }: { title: string, description: s
 const PixScanner = ({ onScan, onClose }: { onScan: (text: string) => void, onClose: () => void }) => {
   const [error, setError] = useState<string | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     let html5QrCode: Html5Qrcode;
@@ -166,6 +167,19 @@ const PixScanner = ({ onScan, onClose }: { onScan: (text: string) => void, onClo
     };
   }, [onScan]);
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const html5QrCode = new Html5Qrcode("qr-reader-hidden");
+    try {
+      const decodedText = await html5QrCode.scanFile(file, true);
+      onScan(decodedText);
+    } catch (err) {
+      alert("Não foi possível ler um código QR nesta imagem.");
+    }
+  };
+
   return (
     <div className="bg-black min-h-screen flex flex-col text-white">
       <header className="p-6 flex items-center justify-between z-10">
@@ -181,6 +195,7 @@ const PixScanner = ({ onScan, onClose }: { onScan: (text: string) => void, onClo
       </header>
       <div className="flex-1 flex flex-col items-center justify-center relative">
         <div id="qr-reader" className="w-full max-w-md overflow-hidden rounded-3xl"></div>
+        <div id="qr-reader-hidden" className="hidden"></div>
         
         {isInitializing && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
@@ -203,25 +218,61 @@ const PixScanner = ({ onScan, onClose }: { onScan: (text: string) => void, onClo
                   {error}
                 </p>
               </div>
-              <motion.button
-                whileTap={{ scale: 0.95 }}
-                onClick={() => window.location.reload()}
-                className="bg-nu-purple text-white px-8 py-3 rounded-full font-bold"
-              >
-                Tentar novamente
-              </motion.button>
+              <div className="flex flex-col gap-3 w-full">
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => window.location.reload()}
+                  className="bg-nu-purple text-white px-8 py-3 rounded-full font-bold w-full"
+                >
+                  Tentar novamente
+                </motion.button>
+                <motion.button
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => fileInputRef.current?.click()}
+                  className="bg-white/10 text-white px-8 py-3 rounded-full font-bold w-full border border-white/20"
+                >
+                  Escolher da galeria
+                </motion.button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*" 
+                  onChange={handleFileUpload}
+                />
+              </div>
               <p className="text-xs text-white/40 max-w-xs">
-                Dica: Se você está usando um APK, certifique-se de que ele tem permissão para acessar a câmera nas configurações do Android.
+                Dica: No WebIntoApp, você precisa habilitar a permissão de câmera nas configurações do seu projeto antes de gerar o APK.
               </p>
             </div>
           </div>
         )}
 
         {!error && !isInitializing && (
-          <div className="absolute bottom-12 left-0 right-0 text-center px-6">
+          <div className="absolute bottom-12 left-0 right-0 flex flex-col items-center gap-6 px-6">
             <p className="text-sm font-medium bg-black/50 inline-block px-4 py-2 rounded-full backdrop-blur-md">
               Aponte a câmera para o código QR
             </p>
+            
+            <div className="flex gap-4">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md">
+                  <ShoppingBag size={20} />
+                </div>
+                <span className="text-[10px] font-bold uppercase tracking-wider">Galeria</span>
+              </motion.button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*" 
+                onChange={handleFileUpload}
+              />
+            </div>
           </div>
         )}
       </div>
