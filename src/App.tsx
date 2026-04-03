@@ -28,7 +28,9 @@ import {
   LogOut,
   ChevronLeft,
   Barcode as BarcodeIcon,
-  Bell
+  Bell,
+  Maximize,
+  Minimize
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -335,8 +337,9 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [isFullScreen, setIsFullScreen] = useState(false);
 
-  const [activeScreen, setActiveScreen] = useState<'home' | 'pix-area' | 'make-pix' | 'pix-scan-qr' | 'receipt' | 'loan-home' | 'loan-simulate' | 'loan-confirm' | 'loan-success'>('home');
+  const [activeScreen, setActiveScreen] = useState<'home' | 'pix-area' | 'make-pix' | 'pix-scan-qr' | 'receipt' | 'loan-home' | 'loan-simulate' | 'loan-confirm' | 'loan-success' | 'recharge-number' | 'recharge-operator' | 'recharge-plans' | 'recharge-success'>('home');
   const [showBalance, setShowBalance] = useState(true);
   const [balance, setBalance] = useState(1250.00);
   const [isEditingBalance, setIsEditingBalance] = useState(false);
@@ -357,6 +360,7 @@ export default function App() {
   const [pixRecipientKey, setPixRecipientKey] = useState("");
   const [pixRecipientInstitution, setPixRecipientInstitution] = useState("PICPAY");
   const [pixRecipientAccountType, setPixRecipientAccountType] = useState("Conta de pagamentos");
+  const [pixDate, setPixDate] = useState(new Date().toISOString().split('T')[0]);
   
   const [lastTransaction, setLastTransaction] = useState<any | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -376,6 +380,34 @@ export default function App() {
   const [activeLoans, setActiveLoans] = useState<{ amount: number, installments: number, total: number, rate: number, date: string }[]>([]);
   const [loanSimulation, setLoanSimulation] = useState({ amount: 5000, installments: 12 });
   const LOAN_INTEREST_RATE = 0.0475; // 4.75% monthly
+
+  // Recharge State
+  const [rechargeNumber, setRechargeNumber] = useState("");
+  const [rechargeOperator, setRechargeOperator] = useState("");
+  const [rechargePlan, setRechargePlan] = useState<any | null>(null);
+
+  const OPERATOR_PLANS: Record<string, { id: number, name: string, price: number }[]> = {
+    'Claro': [
+      { id: 1, name: 'Prezão Mensal 12GB', price: 29.99 },
+      { id: 2, name: 'Prezão Mensal 20GB', price: 44.99 },
+      { id: 3, name: 'Recarga Avulsa R$ 20', price: 20.00 },
+    ],
+    'TIM': [
+      { id: 4, name: 'TIM Pré Top 10GB', price: 30.00 },
+      { id: 5, name: 'TIM Pré Top 15GB', price: 40.00 },
+      { id: 6, name: 'Recarga Avulsa R$ 15', price: 15.00 },
+    ],
+    'Vivo': [
+      { id: 7, name: 'Vivo Pré Turbo 8GB', price: 25.00 },
+      { id: 8, name: 'Vivo Pré Turbo 12GB', price: 35.00 },
+      { id: 9, name: 'Recarga Avulsa R$ 30', price: 30.00 },
+    ],
+    'Correios': [
+      { id: 10, name: 'Alô 30', price: 30.00 },
+      { id: 11, name: 'Alô 40', price: 40.00 },
+      { id: 12, name: 'Alô 50', price: 50.00 },
+    ]
+  };
 
   useEffect(() => {
     if (isDarkMode) {
@@ -419,8 +451,19 @@ export default function App() {
 
   const handleConfirmPix = () => {
     const val = parseFloat(pixValue.replace(',', '.'));
-    if (!isNaN(val) && val > 0 && val <= balance && pixRecipient.trim()) {
-      setBalance(prev => prev - val);
+    if (!isNaN(val) && val > 0 && pixRecipient.trim()) {
+      const today = new Date().toISOString().split('T')[0];
+      const isScheduled = pixDate > today;
+      
+      if (!isScheduled && val > balance) {
+        alert("Saldo insuficiente.");
+        return;
+      }
+
+      if (!isScheduled) {
+        setBalance(prev => prev - val);
+      }
+
       const transactionId = 'E' + Math.random().toString(36).substring(2, 15).toUpperCase() + Math.random().toString(36).substring(2, 15).toLowerCase();
       const transaction = {
         id: transactionId,
@@ -435,7 +478,11 @@ export default function App() {
         originAccount: '60359614-1',
         originAgency: '0001',
         originInstitution: 'NU PAGAMENTOS - IP',
-        date: new Date().toLocaleString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).toUpperCase()
+        date: isScheduled 
+          ? new Date(pixDate + 'T12:00:00').toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).toUpperCase()
+          : new Date().toLocaleString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }).toUpperCase(),
+        isScheduled,
+        scheduledDate: pixDate
       };
       setLastTransaction(transaction);
       setTransactions(prev => [transaction, ...prev]);
@@ -468,7 +515,17 @@ export default function App() {
   };
 
   const renderLogin = () => (
-    <div className="bg-nu-purple min-h-screen flex flex-col p-8 text-white">
+    <div className="bg-nu-purple min-h-screen flex flex-col p-8 text-white relative">
+      {isFullScreen && (
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setIsFullScreen(false)}
+          className="absolute top-6 right-6 p-2 bg-white/20 rounded-full text-white"
+          title="Sair da tela cheia"
+        >
+          <Minimize size={20} />
+        </motion.button>
+      )}
       <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
         <div className="mb-12">
           <svg width="48" height="48" viewBox="0 0 24 24" fill="white">
@@ -566,8 +623,18 @@ export default function App() {
                   <Bell size={20} className="text-nu-purple" />
                 </div>
                 <div>
-                  <p className="text-sm font-medium">Nova Atualização no App Nubank, Versão 10.1 Disponível</p>
+                  <p className="text-sm font-medium">Atualização 5.8 concluída, clique no símbolo de notificação para saber mais.</p>
                   <span className="text-xs text-nu-text-muted mt-2 block">Agora mesmo</span>
+                </div>
+              </div>
+
+              <div className="bg-nu-gray p-4 rounded-xl flex items-start gap-4">
+                <div className="bg-nu-purple/10 p-2 rounded-full shrink-0">
+                  <Bell size={20} className="text-nu-purple" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Nova Atualização no App Nubank, Versão 10.1 Disponível</p>
+                  <span className="text-xs text-nu-text-muted mt-2 block">5 min atrás</span>
                 </div>
               </div>
 
@@ -647,6 +714,27 @@ export default function App() {
                 </div>
               </div>
 
+              <div 
+                onClick={() => setIsFullScreen(!isFullScreen)}
+                className="flex items-center justify-between p-4 rounded-2xl hover:bg-nu-gray cursor-pointer transition-colors"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-nu-purple/10 flex items-center justify-center text-nu-purple">
+                    {isFullScreen ? <Minimize size={20} /> : <Maximize size={20} />}
+                  </div>
+                  <div>
+                    <p className="font-bold">Tela Cheia</p>
+                    <p className="text-xs text-nu-text-muted">{isFullScreen ? 'Ativado' : 'Desativado'}</p>
+                  </div>
+                </div>
+                <div className={`w-12 h-6 rounded-full relative transition-colors ${isFullScreen ? 'bg-nu-purple' : 'bg-gray-300'}`}>
+                  <motion.div 
+                    animate={{ x: isFullScreen ? 24 : 4 }}
+                    className="absolute top-1 w-4 h-4 bg-white rounded-full shadow-sm"
+                  />
+                </div>
+              </div>
+
               <div className="flex items-center justify-between p-4 rounded-2xl hover:bg-nu-gray cursor-pointer transition-colors">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-nu-purple/10 flex items-center justify-center text-nu-purple">
@@ -695,55 +783,77 @@ export default function App() {
   const renderHome = () => (
     <>
       {/* Header */}
-      <header className="bg-nu-purple p-6 pb-8">
-        <div className="flex justify-between items-start mb-8">
-          <div className="w-12 h-12 rounded-full bg-nu-purple-light flex items-center justify-center cursor-pointer">
-            <User size={24} className="text-white" />
+      {!isFullScreen && (
+        <header className="bg-nu-purple p-6 pb-8">
+          <div className="flex justify-between items-start mb-8">
+            <div className="w-12 h-12 rounded-full bg-nu-purple-light flex items-center justify-center cursor-pointer">
+              <User size={24} className="text-white" />
+            </div>
+            <div className="flex gap-4">
+              <motion.button 
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsFullScreen(!isFullScreen)} 
+                className="text-white"
+                title={isFullScreen ? "Sair da tela cheia" : "Tela cheia"}
+              >
+                {isFullScreen ? <Minimize size={24} /> : <Maximize size={24} />}
+              </motion.button>
+              <motion.button 
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setShowBalance(!showBalance)} 
+                className="text-white"
+              >
+                {showBalance ? <Eye size={24} /> : <EyeOff size={24} />}
+              </motion.button>
+              <HelpCircle size={24} className="text-white cursor-pointer" />
+              <Bell size={24} className="text-white cursor-pointer" onClick={() => setIsNotificationsOpen(true)} />
+              <Settings 
+                size={24} 
+                className="text-white cursor-pointer" 
+                onClick={() => setIsSettingsOpen(true)}
+              />
+            </div>
           </div>
-          <div className="flex gap-4">
-            <motion.button 
-              whileTap={{ scale: 0.9 }}
-              onClick={() => setShowBalance(!showBalance)} 
-              className="text-white"
-            >
-              {showBalance ? <Eye size={24} /> : <EyeOff size={24} />}
-            </motion.button>
-            <HelpCircle size={24} className="text-white cursor-pointer" />
-            <Bell size={24} className="text-white cursor-pointer" onClick={() => setIsNotificationsOpen(true)} />
-            <Settings 
-              size={24} 
-              className="text-white cursor-pointer" 
-              onClick={() => setIsSettingsOpen(true)}
-            />
+          <div className="flex items-center gap-2">
+            {isEditingUserName ? (
+              <input 
+                type="text" 
+                value={tempUserName}
+                onChange={(e) => setTempUserName(e.target.value)}
+                className="text-white font-bold text-lg bg-transparent border-b border-white outline-none w-40"
+                autoFocus
+                onBlur={handleSaveUserName}
+                onKeyDown={(e) => e.key === 'Enter' && handleSaveUserName()}
+              />
+            ) : (
+              <h1 
+                className="text-white font-bold text-lg cursor-pointer hover:underline"
+                onClick={() => {
+                  setTempUserName(userName);
+                  setIsEditingUserName(true);
+                }}
+              >
+                Olá, {userName}
+              </h1>
+            )}
           </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {isEditingUserName ? (
-            <input 
-              type="text"
-              value={tempUserName}
-              onChange={(e) => setTempUserName(e.target.value)}
-              className="text-white font-bold text-lg bg-transparent border-b border-white outline-none w-40"
-              autoFocus
-              onBlur={handleSaveUserName}
-              onKeyDown={(e) => e.key === 'Enter' && handleSaveUserName()}
-            />
-          ) : (
-            <h1 
-              className="text-white font-bold text-lg cursor-pointer hover:underline"
-              onClick={() => {
-                setTempUserName(userName);
-                setIsEditingUserName(true);
-              }}
-            >
-              Olá, {userName}
-            </h1>
-          )}
-        </div>
-      </header>
+        </header>
+      )}
 
       {/* Main Content */}
-      <main className="flex flex-col">
+      <main className={`flex flex-col ${isFullScreen ? 'pt-6' : ''}`}>
+        {isFullScreen && (
+          <div className="px-6 mb-4 flex justify-end">
+            <motion.button 
+              whileTap={{ scale: 0.9 }}
+              onClick={() => setIsFullScreen(false)} 
+              className="p-2 bg-nu-purple rounded-full text-white shadow-lg"
+              title="Sair da tela cheia"
+            >
+              <Minimize size={20} />
+            </motion.button>
+          </div>
+        )}
         {/* Account Balance */}
         <Card className="relative">
           <div className="flex justify-between items-center mb-4">
@@ -792,7 +902,7 @@ export default function App() {
           <IconButton icon={Receipt} label="Pagar Contas" />
           <IconButton icon={ArrowDownCircle} label="Empréstimo" onClick={() => setActiveScreen('loan-home')} />
           <IconButton icon={ArrowUpCircle} label="Transferir" onClick={startManualPix} />
-          <IconButton icon={PlusCircle} label="Recarga" />
+          <IconButton icon={PlusCircle} label="Recarga" onClick={() => setActiveScreen('recharge-number')} />
           <IconButton icon={DollarSign} label="Depositar" />
           <IconButton icon={TrendingUp} label="Investir" />
         </div>
@@ -933,14 +1043,21 @@ export default function App() {
                       <QrCode size={20} className="text-nu-purple" />
                     </div>
                     <div>
-                      <p className="font-bold text-sm text-nu-text">Transferência enviada</p>
+                      <p className="font-bold text-sm text-nu-text">
+                        {t.isScheduled ? 'Transferência agendada' : 'Transferência enviada'}
+                      </p>
                       <p className="text-xs text-nu-text-muted">{t.recipient}</p>
                       <p className="text-[10px] text-nu-text-muted mt-1">{t.date}</p>
                     </div>
                   </div>
-                  <span className="font-bold text-sm text-red-500">
-                    - {formatCurrency(t.value)}
-                  </span>
+                  <div className="flex flex-col items-end">
+                    <span className={`font-bold text-sm ${t.isScheduled ? 'text-nu-text-muted' : 'text-red-500'}`}>
+                      - {formatCurrency(t.value)}
+                    </span>
+                    {t.isScheduled && (
+                      <span className="text-[10px] text-nu-purple font-bold">Agendado</span>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
@@ -1154,6 +1271,16 @@ export default function App() {
             <option value="Conta poupança">Conta poupança</option>
           </select>
         </div>
+        <div>
+          <label className="block text-sm font-bold mb-2 text-nu-text">Quando</label>
+          <input 
+            type="date"
+            value={pixDate}
+            min={new Date().toISOString().split('T')[0]}
+            onChange={(e) => setPixDate(e.target.value)}
+            className="w-full p-4 bg-nu-gray rounded-xl outline-none font-bold text-nu-text"
+          />
+        </div>
       </div>
       <Button 
         onClick={handleConfirmPix}
@@ -1181,7 +1308,9 @@ export default function App() {
       </header>
 
       <div className="flex-1 px-8 py-4 overflow-y-auto">
-        <h1 className="text-2xl font-bold mb-1 tracking-tight">Comprovante de transferência</h1>
+        <h1 className="text-2xl font-bold mb-1 tracking-tight">
+          {lastTransaction?.isScheduled ? 'Agendamento de transferência' : 'Comprovante de transferência'}
+        </h1>
         <p className="text-gray-500 text-[11px] font-medium mb-10">{lastTransaction?.date}</p>
 
         <div className="grid grid-cols-2 gap-y-10 mb-10">
@@ -1194,6 +1323,13 @@ export default function App() {
             <p className="text-xl font-bold">Pix</p>
           </div>
         </div>
+
+        {lastTransaction?.isScheduled && (
+          <div className="bg-nu-purple/5 p-4 rounded-xl mb-10 border border-nu-purple/10">
+            <p className="text-nu-purple text-[10px] font-bold uppercase tracking-wider mb-1">Status</p>
+            <p className="text-sm font-bold text-nu-purple">Agendado para {new Date(lastTransaction.scheduledDate + 'T12:00:00').toLocaleDateString('pt-BR')}</p>
+          </div>
+        )}
 
         <div className="border-t border-gray-100 pt-8 mb-8">
           <h2 className="font-bold text-sm mb-8">Destino</h2>
@@ -1269,6 +1405,158 @@ export default function App() {
           Voltar ao início
         </Button>
       </div>
+    </div>
+  );
+
+  const formatPhoneNumber = (value: string) => {
+    const numbers = value.replace(/\D/g, '');
+    if (numbers.length <= 2) return numbers;
+    if (numbers.length <= 7) return `(${numbers.slice(0, 2)}) ${numbers.slice(2)}`;
+    return `(${numbers.slice(0, 2)}) ${numbers.slice(2, 7)}-${numbers.slice(7, 11)}`;
+  };
+
+  const renderRechargeNumber = () => (
+    <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col transition-colors duration-300">
+      <header className="p-6 flex items-center justify-between">
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setActiveScreen('home')} 
+          className="text-nu-text"
+        >
+          <ChevronLeft size={24} />
+        </motion.button>
+        <HelpCircle size={24} className="text-nu-text-muted" />
+      </header>
+      <div className="px-8 flex-1">
+        <h1 className="text-2xl font-bold mb-8 text-nu-text">Qual número você quer recarregar?</h1>
+        <div className="mb-8">
+          <input 
+            type="tel"
+            placeholder="(00) 00000-0000"
+            value={rechargeNumber}
+            onChange={(e) => setRechargeNumber(formatPhoneNumber(e.target.value))}
+            maxLength={15}
+            className="text-2xl font-bold border-b-2 border-nu-purple outline-none w-full bg-transparent text-nu-text py-2"
+            autoFocus
+          />
+        </div>
+      </div>
+      <div className="p-6 flex justify-end">
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => rechargeNumber.replace(/\D/g, '').length >= 10 && setActiveScreen('recharge-operator')}
+          disabled={rechargeNumber.replace(/\D/g, '').length < 10}
+          className="w-14 h-14 bg-nu-purple rounded-full flex items-center justify-center text-white shadow-lg disabled:opacity-50"
+        >
+          <ChevronRight size={32} />
+        </motion.button>
+      </div>
+    </div>
+  );
+
+  const renderRechargeOperator = () => (
+    <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col transition-colors duration-300">
+      <header className="p-6 flex items-center justify-between">
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setActiveScreen('recharge-number')} 
+          className="text-nu-text"
+        >
+          <ChevronLeft size={24} />
+        </motion.button>
+        <HelpCircle size={24} className="text-nu-text-muted" />
+      </header>
+      <div className="px-8 flex-1">
+        <h1 className="text-2xl font-bold mb-8 text-nu-text">Qual é a operadora?</h1>
+        <div className="space-y-4">
+          {['Claro', 'TIM', 'Vivo', 'Correios'].map((op) => (
+            <div 
+              key={op}
+              onClick={() => setRechargeOperator(op)}
+              className={`p-6 rounded-2xl border-2 transition-all cursor-pointer flex justify-between items-center ${rechargeOperator === op ? 'border-nu-purple bg-nu-purple/5' : 'border-nu-gray bg-nu-gray/30'}`}
+            >
+              <span className="font-bold text-lg text-nu-text">{op}</span>
+              {rechargeOperator === op && <div className="w-6 h-6 bg-nu-purple rounded-full flex items-center justify-center"><div className="w-2 h-2 bg-white rounded-full" /></div>}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="p-6 flex justify-end">
+        <motion.button
+          whileTap={{ scale: 0.9 }}
+          onClick={() => rechargeOperator && setActiveScreen('recharge-plans')}
+          disabled={!rechargeOperator}
+          className="w-14 h-14 bg-nu-purple rounded-full flex items-center justify-center text-white shadow-lg disabled:opacity-50"
+        >
+          <ChevronRight size={32} />
+        </motion.button>
+      </div>
+    </div>
+  );
+
+  const renderRechargePlans = () => (
+    <div className="bg-white dark:bg-[#000000] min-h-screen flex flex-col transition-colors duration-300">
+      <header className="p-6 flex items-center justify-between">
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={() => setActiveScreen('recharge-operator')} 
+          className="text-nu-text"
+        >
+          <ChevronLeft size={24} />
+        </motion.button>
+        <HelpCircle size={24} className="text-nu-text-muted" />
+      </header>
+      <div className="px-8 flex-1 overflow-y-auto">
+        <h1 className="text-2xl font-bold mb-2 text-nu-text">Escolha forma de pagamento</h1>
+        <div className="bg-nu-gray/50 p-4 rounded-xl mb-8">
+          <p className="text-sm font-bold text-nu-text">Conta Nubank</p>
+          <p className="text-xs text-nu-text-muted">Limite disponível: {formatCurrency(balance)}</p>
+        </div>
+
+        <h2 className="text-lg font-bold mb-4 text-nu-text">Planos {rechargeOperator}</h2>
+        <div className="space-y-4 mb-8">
+          {OPERATOR_PLANS[rechargeOperator]?.map((plan) => (
+            <div 
+              key={plan.id}
+              onClick={() => setRechargePlan(plan)}
+              className={`p-5 rounded-2xl border-2 transition-all cursor-pointer flex flex-col gap-1 ${rechargePlan?.id === plan.id ? 'border-nu-purple bg-nu-purple/5' : 'border-nu-gray bg-nu-gray/30'}`}
+            >
+              <span className="font-bold text-nu-text">{plan.name}</span>
+              <span className="text-nu-purple font-bold">{formatCurrency(plan.price)}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="p-6">
+        <Button 
+          disabled={!rechargePlan || balance < rechargePlan.price}
+          onClick={() => {
+            setBalance(prev => prev - rechargePlan.price);
+            setActiveScreen('recharge-success');
+          }}
+        >
+          {balance < (rechargePlan?.price || 0) ? 'Saldo insuficiente' : 'Confirmar pagamento'}
+        </Button>
+      </div>
+    </div>
+  );
+
+  const renderRechargeSuccess = () => (
+    <div className="bg-nu-purple min-h-screen flex flex-col items-center justify-center p-8 text-white text-center">
+      <motion.div 
+        initial={{ scale: 0 }}
+        animate={{ scale: 1 }}
+        className="w-24 h-24 bg-white rounded-full flex items-center justify-center mb-8"
+      >
+        <ShieldCheck size={48} className="text-nu-purple" />
+      </motion.div>
+      <h1 className="text-3xl font-bold mb-4">Pagamento concluído</h1>
+      <p className="text-white/80 mb-12">
+        Sua recarga para o número <span className="font-bold">{rechargeNumber}</span> foi realizada com sucesso.
+      </p>
+      <Button variant="white" onClick={() => setActiveScreen('home')}>
+        Voltar ao início
+      </Button>
     </div>
   );
 
@@ -1524,6 +1812,10 @@ export default function App() {
               {activeScreen === 'loan-simulate' && renderLoanSimulate()}
               {activeScreen === 'loan-confirm' && renderLoanConfirm()}
               {activeScreen === 'loan-success' && renderLoanSuccess()}
+              {activeScreen === 'recharge-number' && renderRechargeNumber()}
+              {activeScreen === 'recharge-operator' && renderRechargeOperator()}
+              {activeScreen === 'recharge-plans' && renderRechargePlans()}
+              {activeScreen === 'recharge-success' && renderRechargeSuccess()}
             </motion.div>
           </AnimatePresence>
 
@@ -1562,13 +1854,21 @@ export default function App() {
                   <div className="w-16 h-16 bg-nu-gray rounded-full flex items-center justify-center mb-4">
                     <QrCode size={32} className="text-nu-purple" />
                   </div>
-                  <span className="text-nu-text-muted text-sm font-medium">Transferência enviada</span>
-                  <span className="text-3xl font-bold mt-1 text-red-500">
+                  <span className="text-nu-text-muted text-sm font-medium">
+                    {selectedTransaction.isScheduled ? 'Transferência agendada' : 'Transferência enviada'}
+                  </span>
+                  <span className={`text-3xl font-bold mt-1 ${selectedTransaction.isScheduled ? 'text-nu-text' : 'text-red-500'}`}>
                     - {formatCurrency(selectedTransaction.value)}
                   </span>
                 </div>
 
                 <div className="space-y-6 bg-nu-gray/30 p-6 rounded-2xl">
+                  {selectedTransaction.isScheduled && (
+                    <div className="flex justify-between">
+                      <span className="text-nu-text-muted text-sm">Status</span>
+                      <span className="font-bold text-nu-purple">Agendado</span>
+                    </div>
+                  )}
                   <div className="flex justify-between items-start">
                     <span className="text-nu-text-muted text-sm">Para</span>
                     <span className="font-bold text-right max-w-[200px]">{selectedTransaction.recipient}</span>
@@ -1609,7 +1909,7 @@ export default function App() {
       </AnimatePresence>
 
       {/* Bottom Navigation */}
-      {activeScreen === 'home' && (
+      {activeScreen === 'home' && !isFullScreen && (
         <nav className="fixed bottom-0 left-0 right-0 bg-white/80 dark:bg-black/80 backdrop-blur-md border-t border-nu-gray px-6 py-3 flex justify-around items-center max-w-md mx-auto z-50">
           <div className="flex flex-col items-center gap-1 text-nu-purple">
             <div className="p-2 rounded-full bg-nu-purple/10">
