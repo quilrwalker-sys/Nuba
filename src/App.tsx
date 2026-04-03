@@ -113,11 +113,21 @@ const InfoCard = ({ title, description, badge }: { title: string, description: s
 );
 
 const PixScanner = ({ onScan, onClose }: { onScan: (text: string) => void, onClose: () => void }) => {
+  const [error, setError] = useState<string | null>(null);
+  const [isInitializing, setIsInitializing] = useState(true);
+
   useEffect(() => {
     let html5QrCode: Html5Qrcode;
     
     const startScanner = async () => {
+      setIsInitializing(true);
+      setError(null);
       try {
+        // Check if browser supports camera
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error("Seu navegador ou aplicativo não suporta acesso à câmera.");
+        }
+
         html5QrCode = new Html5Qrcode("qr-reader");
         await html5QrCode.start(
           { facingMode: "environment" },
@@ -133,8 +143,17 @@ const PixScanner = ({ onScan, onClose }: { onScan: (text: string) => void, onClo
             // parse error, ignore
           }
         );
-      } catch (err) {
+        setIsInitializing(false);
+      } catch (err: any) {
         console.error("Error starting scanner", err);
+        setIsInitializing(false);
+        if (err?.message?.includes("Permission denied") || err?.name === "NotAllowedError") {
+          setError("Permissão de câmera negada. Por favor, autorize o acesso nas configurações do seu celular ou aplicativo.");
+        } else if (err?.name === "NotFoundError" || err?.name === "DevicesNotFoundError") {
+          setError("Nenhuma câmera encontrada no seu dispositivo.");
+        } else {
+          setError("Não foi possível iniciar a câmera. Verifique se o seu aplicativo tem permissão de acesso à câmera.");
+        }
       }
     };
 
@@ -155,18 +174,56 @@ const PixScanner = ({ onScan, onClose }: { onScan: (text: string) => void, onClo
           onClick={onClose} 
           className="text-white bg-black/50 p-2 rounded-full"
         >
-          <ChevronRight size={24} className="rotate-180" />
+          <ChevronLeft size={24} />
         </motion.button>
         <span className="font-bold">Ler QR code</span>
         <HelpCircle size={24} className="text-white/50" />
       </header>
       <div className="flex-1 flex flex-col items-center justify-center relative">
         <div id="qr-reader" className="w-full max-w-md overflow-hidden rounded-3xl"></div>
-        <div className="absolute bottom-12 left-0 right-0 text-center px-6">
-          <p className="text-sm font-medium bg-black/50 inline-block px-4 py-2 rounded-full backdrop-blur-md">
-            Aponte a câmera para o código QR
-          </p>
-        </div>
+        
+        {isInitializing && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-12 h-12 border-4 border-nu-purple border-t-transparent rounded-full animate-spin"></div>
+              <p className="text-sm font-medium">Iniciando câmera...</p>
+            </div>
+          </div>
+        )}
+
+        {error && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/90 z-30 p-8 text-center">
+            <div className="flex flex-col items-center gap-6">
+              <div className="bg-red-500/20 p-4 rounded-full">
+                <X size={48} className="text-red-500" />
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-xl font-bold">Erro na Câmera</h3>
+                <p className="text-sm text-white/70 leading-relaxed">
+                  {error}
+                </p>
+              </div>
+              <motion.button
+                whileTap={{ scale: 0.95 }}
+                onClick={() => window.location.reload()}
+                className="bg-nu-purple text-white px-8 py-3 rounded-full font-bold"
+              >
+                Tentar novamente
+              </motion.button>
+              <p className="text-xs text-white/40 max-w-xs">
+                Dica: Se você está usando um APK, certifique-se de que ele tem permissão para acessar a câmera nas configurações do Android.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {!error && !isInitializing && (
+          <div className="absolute bottom-12 left-0 right-0 text-center px-6">
+            <p className="text-sm font-medium bg-black/50 inline-block px-4 py-2 rounded-full backdrop-blur-md">
+              Aponte a câmera para o código QR
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
