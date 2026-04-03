@@ -560,14 +560,34 @@ export default function App() {
                 <X size={24} />
               </motion.button>
             </div>
-            <div className="p-6 max-h-[60vh] overflow-y-auto">
+            <div className="p-6 max-h-[60vh] overflow-y-auto space-y-4">
+              <div className="bg-nu-gray p-4 rounded-xl flex items-start gap-4 border-l-4 border-nu-purple">
+                <div className="bg-nu-purple/10 p-2 rounded-full shrink-0">
+                  <Bell size={20} className="text-nu-purple" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Nova Atualização no App Nubank, Versão 10.1 Disponível</p>
+                  <span className="text-xs text-nu-text-muted mt-2 block">Agora mesmo</span>
+                </div>
+              </div>
+
+              <div className="bg-nu-gray p-4 rounded-xl flex items-start gap-4">
+                <div className="bg-nu-purple/10 p-2 rounded-full shrink-0">
+                  <Bell size={20} className="text-nu-purple" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Nova atualização 5.7: Correção QR code, app não aceita câmera então adicionei a função de "Galeria", envie sua foto do QR code que ele aceitara ou vá em Pix Copiar e Colar</p>
+                  <span className="text-xs text-nu-text-muted mt-2 block">5 min atrás</span>
+                </div>
+              </div>
+
               <div className="bg-nu-gray p-4 rounded-xl flex items-start gap-4">
                 <div className="bg-nu-purple/10 p-2 rounded-full shrink-0">
                   <Bell size={20} className="text-nu-purple" />
                 </div>
                 <div>
                   <p className="text-sm font-medium">🤩 Nova Atualização 5.6, Adicionado Código QR para Scanear os pagamentos Via Pix 😎</p>
-                  <span className="text-xs text-nu-text-muted mt-2 block">Agora mesmo</span>
+                  <span className="text-xs text-nu-text-muted mt-2 block">1 hora atrás</span>
                 </div>
               </div>
             </div>
