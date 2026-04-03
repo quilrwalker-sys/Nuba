@@ -226,20 +226,6 @@ const PixScanner = ({ onScan, onClose }: { onScan: (text: string) => void, onClo
                 >
                   Tentar novamente
                 </motion.button>
-                <motion.button
-                  whileTap={{ scale: 0.95 }}
-                  onClick={() => fileInputRef.current?.click()}
-                  className="bg-white/10 text-white px-8 py-3 rounded-full font-bold w-full border border-white/20"
-                >
-                  Escolher da galeria
-                </motion.button>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  accept="image/*" 
-                  onChange={handleFileUpload}
-                />
               </div>
               <p className="text-xs text-white/40 max-w-xs">
                 Dica: No WebIntoApp, você precisa habilitar a permissão de câmera nas configurações do seu projeto antes de gerar o APK.
@@ -248,33 +234,49 @@ const PixScanner = ({ onScan, onClose }: { onScan: (text: string) => void, onClo
           </div>
         )}
 
-        {!error && !isInitializing && (
-          <div className="absolute bottom-12 left-0 right-0 flex flex-col items-center gap-6 px-6">
+        {/* Fallback buttons - ALWAYS VISIBLE */}
+        <div className="absolute bottom-12 left-0 right-0 flex flex-col items-center gap-6 px-6 z-40">
+          {!error && !isInitializing && (
             <p className="text-sm font-medium bg-black/50 inline-block px-4 py-2 rounded-full backdrop-blur-md">
               Aponte a câmera para o código QR
             </p>
-            
-            <div className="flex gap-4">
-              <motion.button
-                whileTap={{ scale: 0.9 }}
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center gap-2"
-              >
-                <div className="w-12 h-12 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md">
-                  <ShoppingBag size={20} />
-                </div>
-                <span className="text-[10px] font-bold uppercase tracking-wider">Galeria</span>
-              </motion.button>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                className="hidden" 
-                accept="image/*" 
-                onChange={handleFileUpload}
-              />
-            </div>
+          )}
+          
+          <div className="flex gap-8">
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => fileInputRef.current?.click()}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20">
+                <ShoppingBag size={24} />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider">Galeria</span>
+            </motion.button>
+
+            <motion.button
+              whileTap={{ scale: 0.9 }}
+              onClick={() => {
+                const key = prompt("Cole a chave Pix (Copia e Cola):");
+                if (key) onScan(key);
+              }}
+              className="flex flex-col items-center gap-2"
+            >
+              <div className="w-14 h-14 bg-white/10 rounded-full flex items-center justify-center backdrop-blur-md border border-white/20">
+                <SmartphoneIcon size={24} />
+              </div>
+              <span className="text-[10px] font-bold uppercase tracking-wider">Pix Copia e Cola</span>
+            </motion.button>
+
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleFileUpload}
+            />
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
