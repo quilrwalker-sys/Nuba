@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Html5Qrcode } from 'html5-qrcode';
 import { 
   Eye, 
   EyeOff, 
@@ -26,7 +27,8 @@ import {
   Sun,
   LogOut,
   ChevronLeft,
-  Barcode as BarcodeIcon
+  Barcode as BarcodeIcon,
+  Bell
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -110,14 +112,121 @@ const InfoCard = ({ title, description, badge }: { title: string, description: s
   </div>
 );
 
+const PixScanner = ({ onScan, onClose }: { onScan: (text: string) => void, onClose: () => void }) => {
+  useEffect(() => {
+    let html5QrCode: Html5Qrcode;
+    
+    const startScanner = async () => {
+      try {
+        html5QrCode = new Html5Qrcode("qr-reader");
+        await html5QrCode.start(
+          { facingMode: "environment" },
+          {
+            fps: 10,
+            qrbox: { width: 250, height: 250 },
+          },
+          (decodedText) => {
+            onScan(decodedText);
+            html5QrCode.stop().catch(console.error);
+          },
+          (errorMessage) => {
+            // parse error, ignore
+          }
+        );
+      } catch (err) {
+        console.error("Error starting scanner", err);
+      }
+    };
+
+    startScanner();
+
+    return () => {
+      if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(console.error);
+      }
+    };
+  }, [onScan]);
+
+  return (
+    <div className="bg-black min-h-screen flex flex-col text-white">
+      <header className="p-6 flex items-center justify-between z-10">
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={onClose} 
+          className="text-white bg-black/50 p-2 rounded-full"
+        >
+          <ChevronRight size={24} className="rotate-180" />
+        </motion.button>
+        <span className="font-bold">Ler QR code</span>
+        <HelpCircle size={24} className="text-white/50" />
+      </header>
+      <div className="flex-1 flex flex-col items-center justify-center relative">
+        <div id="qr-reader" className="w-full max-w-md overflow-hidden rounded-3xl"></div>
+        <div className="absolute bottom-12 left-0 right-0 text-center px-6">
+          <p className="text-sm font-medium bg-black/50 inline-block px-4 py-2 rounded-full backdrop-blur-md">
+            Aponte a câmera para o código QR
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const parsePixQRCode = (payload: string) => {
+  let i = 0;
+  const data: Record<string, string> = {};
+  try {
+    while (i < payload.length) {
+      const id = payload.substring(i, i + 2);
+      const lengthStr = payload.substring(i + 2, i + 4);
+      const length = parseInt(lengthStr, 10);
+      if (isNaN(length)) break;
+      const value = payload.substring(i + 4, i + 4 + length);
+      data[id] = value;
+      i += 4 + length;
+    }
+
+    let pixKey = payload; 
+    let name = "";
+    let institution = "Instituição não identificada";
+
+    if (data['59']) {
+      name = data['59'];
+    }
+
+    if (data['26']) {
+      const accountInfo = data['26'];
+      let j = 0;
+      const accountData: Record<string, string> = {};
+      while (j < accountInfo.length) {
+        const subId = accountInfo.substring(j, j + 2);
+        const subLength = parseInt(accountInfo.substring(j + 2, j + 4), 10);
+        if (isNaN(subLength)) break;
+        const subValue = accountInfo.substring(j + 4, j + 4 + subLength);
+        accountData[subId] = subValue;
+        j += 4 + subLength;
+      }
+      if (accountData['01']) {
+        pixKey = accountData['01'];
+      }
+    }
+    
+    return { name, pixKey, institution };
+  } catch (e) {
+    console.error("Failed to parse Pix payload", e);
+    return { name: "", pixKey: payload, institution: "" };
+  }
+};
+
 export default function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [cpf, setCpf] = useState("");
   const [password, setPassword] = useState("");
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
-  const [activeScreen, setActiveScreen] = useState<'home' | 'pix-area' | 'make-pix' | 'receipt' | 'loan-home' | 'loan-simulate' | 'loan-confirm' | 'loan-success'>('home');
+  const [activeScreen, setActiveScreen] = useState<'home' | 'pix-area' | 'make-pix' | 'pix-scan-qr' | 'receipt' | 'loan-home' | 'loan-simulate' | 'loan-confirm' | 'loan-success'>('home');
   const [showBalance, setShowBalance] = useState(true);
   const [balance, setBalance] = useState(1250.00);
   const [isEditingBalance, setIsEditingBalance] = useState(false);
@@ -142,6 +251,16 @@ export default function App() {
   const [lastTransaction, setLastTransaction] = useState<any | null>(null);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [selectedTransaction, setSelectedTransaction] = useState<any | null>(null);
+
+  const startManualPix = () => {
+    setPixValue("");
+    setPixRecipient("");
+    setPixRecipientCpf("");
+    setPixRecipientKey("");
+    setPixRecipientInstitution("");
+    setPixRecipientAccountType("Conta corrente");
+    setActiveScreen('make-pix');
+  };
 
   // Loan State
   const [activeLoans, setActiveLoans] = useState<{ amount: number, installments: number, total: number, rate: number, date: string }[]>([]);
@@ -304,6 +423,50 @@ export default function App() {
     </div>
   );
 
+  const renderNotifications = () => (
+    <AnimatePresence>
+      {isNotificationsOpen && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-0 sm:p-4">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setIsNotificationsOpen(false)}
+            className="absolute inset-0 bg-black/60 backdrop-blur-md"
+          />
+          <motion.div 
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+            className="relative w-full max-w-md bg-white dark:bg-[#111111] rounded-3xl overflow-hidden shadow-2xl m-4"
+          >
+            <div className="p-6 border-b border-nu-gray flex justify-between items-center">
+              <h3 className="text-xl font-bold">Notificações</h3>
+              <motion.button 
+                whileTap={{ scale: 0.9 }}
+                onClick={() => setIsNotificationsOpen(false)}
+                className="p-2 hover:bg-nu-gray rounded-full transition-colors"
+              >
+                <X size={24} />
+              </motion.button>
+            </div>
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              <div className="bg-nu-gray p-4 rounded-xl flex items-start gap-4">
+                <div className="bg-nu-purple/10 p-2 rounded-full shrink-0">
+                  <Bell size={20} className="text-nu-purple" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">🤩 Nova Atualização 5.6, Adicionado Código QR para Scanear os pagamentos Via Pix 😎</p>
+                  <span className="text-xs text-nu-text-muted mt-2 block">Agora mesmo</span>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
+  );
+
   const renderSettings = () => (
     <AnimatePresence>
       {isSettingsOpen && (
@@ -416,6 +579,7 @@ export default function App() {
               {showBalance ? <Eye size={24} /> : <EyeOff size={24} />}
             </motion.button>
             <HelpCircle size={24} className="text-white cursor-pointer" />
+            <Bell size={24} className="text-white cursor-pointer" onClick={() => setIsNotificationsOpen(true)} />
             <Settings 
               size={24} 
               className="text-white cursor-pointer" 
@@ -497,7 +661,7 @@ export default function App() {
           <IconButton icon={BarcodeIcon} label="Pagar" />
           <IconButton icon={Receipt} label="Pagar Contas" />
           <IconButton icon={ArrowDownCircle} label="Empréstimo" onClick={() => setActiveScreen('loan-home')} />
-          <IconButton icon={ArrowUpCircle} label="Transferir" onClick={() => setActiveScreen('make-pix')} />
+          <IconButton icon={ArrowUpCircle} label="Transferir" onClick={startManualPix} />
           <IconButton icon={PlusCircle} label="Recarga" />
           <IconButton icon={DollarSign} label="Depositar" />
           <IconButton icon={TrendingUp} label="Investir" />
@@ -698,13 +862,13 @@ export default function App() {
         <p className="text-nu-text-muted mb-8">Envie e receba pagamentos a qualquer hora, 7 dias por semana.</p>
         
         <div className="grid grid-cols-3 gap-6 mb-12">
-          <div onClick={() => setActiveScreen('make-pix')} className="flex flex-col items-center gap-2 cursor-pointer">
+          <div onClick={startManualPix} className="flex flex-col items-center gap-2 cursor-pointer">
             <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center hover:opacity-80 transition-all">
               <ArrowUpCircle size={24} className="text-nu-text" />
             </div>
             <span className="text-xs font-bold text-center text-nu-text">Transferir</span>
           </div>
-          <div className="flex flex-col items-center gap-2 cursor-pointer">
+          <div onClick={() => setActiveScreen('pix-scan-qr')} className="flex flex-col items-center gap-2 cursor-pointer">
             <div className="w-16 h-16 rounded-full bg-nu-gray flex items-center justify-center hover:opacity-80 transition-all">
               <QrCode size={24} className="text-nu-text" />
             </div>
@@ -736,6 +900,49 @@ export default function App() {
         </div>
       </div>
     </div>
+  );
+
+  const renderPixScanQr = () => (
+    <PixScanner 
+      onScan={(text) => {
+        const parsedData = parsePixQRCode(text);
+        
+        // Simulate DICT API resolution (Central Bank)
+        // Since QR codes don't contain CPF and Institution, we deterministically mock them based on the key
+        const hashString = (str: string) => {
+          let hash = 0;
+          for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+          }
+          return Math.abs(hash);
+        };
+        
+        const hash = hashString(parsedData.pixKey || text);
+        const cpfPart1 = String((hash % 899) + 100).padStart(3, '0');
+        const cpfPart2 = String(((hash * 2) % 899) + 100).padStart(3, '0');
+        const simulatedCpf = `***.${cpfPart1}.${cpfPart2}-**`;
+        
+        const institutions = [
+          "PICPAY INSTITUIÇÃO DE PAGAMENTO S.A.",
+          "BANCO ORIGINAL S.A.",
+          "NU PAGAMENTOS S.A.",
+          "BANCO INTER S.A.",
+          "ITAÚ UNIBANCO S.A.",
+          "MERCADO PAGO IP LTDA.",
+          "BANCO BRADESCO S.A.",
+          "CAIXA ECONOMICA FEDERAL"
+        ];
+        const simulatedInstitution = institutions[hash % institutions.length];
+
+        setPixRecipientKey(parsedData.pixKey);
+        setPixRecipient(parsedData.name || "Nome não identificado");
+        setPixRecipientCpf(simulatedCpf);
+        setPixRecipientInstitution(simulatedInstitution);
+        setPixRecipientAccountType("Conta corrente");
+        setActiveScreen('make-pix');
+      }} 
+      onClose={() => setActiveScreen('pix-area')} 
+    />
   );
 
   const renderMakePix = () => (
@@ -1180,6 +1387,7 @@ export default function App() {
             >
               {activeScreen === 'home' && renderHome()}
               {activeScreen === 'pix-area' && renderPixArea()}
+              {activeScreen === 'pix-scan-qr' && renderPixScanQr()}
               {activeScreen === 'make-pix' && renderMakePix()}
               {activeScreen === 'receipt' && renderReceipt()}
               {activeScreen === 'loan-home' && renderLoanHome()}
@@ -1190,6 +1398,7 @@ export default function App() {
           </AnimatePresence>
 
           {renderSettings()}
+          {renderNotifications()}
 
           <AnimatePresence>
             {selectedTransaction && (
